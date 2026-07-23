@@ -1,8 +1,62 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { styled } from 'nativewind';
 import { useTranslation } from 'react-i18next';
 import { Alert, Text as RNText, TouchableOpacity, View } from 'react-native';
 
 import { ScreenContainer, Text } from '@/components';
 import { clearAllLocalData } from '@/db/queries';
+import type { ThemePreference } from '@/db/types';
+import { useThemePreference } from '@/hooks/useThemePreference';
+
+const Icon = styled(MaterialCommunityIcons);
+
+type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+
+const THEME_ICONS: Record<ThemePreference, IconName> = {
+  system: 'theme-light-dark',
+  light: 'white-balance-sunny',
+  dark: 'weather-night',
+};
+
+function ThemePicker() {
+  const { t } = useTranslation();
+  const { preference, setPreference } = useThemePreference();
+  const options: ThemePreference[] = ['system', 'light', 'dark'];
+
+  return (
+    <View className="w-full gap-2">
+      <Text variant="eyebrow">{t('settings.theme.title')}</Text>
+      <View className="flex-row gap-2">
+        {options.map((option) => {
+          const selected = preference === option;
+          const tint = selected
+            ? 'text-brand'
+            : 'text-gray-500 dark:text-ink-muted';
+          return (
+            <TouchableOpacity
+              key={option}
+              onPress={() => {
+                void setPreference(option);
+              }}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              className={`h-16 flex-1 items-center justify-center gap-1 rounded-2xl border-2 ${
+                selected
+                  ? 'border-brand bg-brand/10'
+                  : 'border-gray-300 bg-gray-100 dark:border-night-border dark:bg-night-elevated'
+              }`}
+            >
+              <Icon name={THEME_ICONS[option]} size={20} className={tint} />
+              <RNText className={`text-xs font-semibold ${tint}`}>
+                {t(`settings.theme.${option}`)}
+              </RNText>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
 
 // Dev-only: lets a developer wipe locally stored data (stale test sessions,
 // bad counter states) without uninstalling Expo Go. __DEV__ is compiled to a
@@ -52,6 +106,7 @@ export default function SettingsScreen() {
   return (
     <ScreenContainer className="items-center gap-6 px-4 pt-8">
       <Text variant="heading">{t('tabs.settings')}</Text>
+      <ThemePicker />
       {__DEV__ && <DevTools />}
     </ScreenContainer>
   );

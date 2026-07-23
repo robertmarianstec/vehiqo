@@ -51,6 +51,14 @@
       }
     }
   },
+  "settings": {
+    "theme": {
+      "title": "Wygląd",
+      "system": "System",
+      "light": "Jasny",
+      "dark": "Ciemny"
+    }
+  },
   "common": {
     "loading": "Ładowanie...",
     "error": "Coś poszło nie tak",

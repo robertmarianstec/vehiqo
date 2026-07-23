@@ -51,6 +51,14 @@
       }
     }
   },
+  "settings": {
+    "theme": {
+      "title": "Appearance",
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    }
+  },
   "common": {
     "loading": "Loading...",
     "error": "Something went wrong",
