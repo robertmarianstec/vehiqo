@@ -6,7 +6,7 @@ import {
 import { generateId } from '@/utils/id';
 
 import { getDatabase, WebDatabaseUnavailableError } from './index';
-import type { WorkMode, WorkSession } from './types';
+import type { ThemePreference, WorkMode, WorkSession } from './types';
 
 // Only the web preview can lack a database; read queries then fall back to a
 // UI-only state so the browser still renders. Native always has SQLite, so this
@@ -171,6 +171,46 @@ export async function clearAllLocalData(): Promise<void> {
     await db.runAsync('DELETE FROM work_sessions;');
     await db.runAsync('DELETE FROM app_settings;');
   });
+}
+
+const THEME_PREFERENCE_KEY = 'theme_preference';
+
+function isThemePreference(
+  value: string | undefined,
+): value is ThemePreference {
+  return value === 'system' || value === 'light' || value === 'dark';
+}
+
+export async function getThemePreference(): Promise<ThemePreference> {
+  try {
+    const db = await getDatabase();
+    const row = await db.getFirstAsync<{ value: string }>(
+      `SELECT value FROM app_settings WHERE key = ?;`,
+      THEME_PREFERENCE_KEY,
+    );
+    return isThemePreference(row?.value) ? row.value : 'system';
+  } catch (e) {
+    if (isDbUnavailable(e)) return 'system';
+    throw e;
+  }
+}
+
+export async function setThemePreference(
+  preference: ThemePreference,
+): Promise<void> {
+  try {
+    const db = await getDatabase();
+    await db.runAsync(
+      `INSERT OR REPLACE INTO app_settings (key, value, updated_at)
+       VALUES (?, ?, ?);`,
+      THEME_PREFERENCE_KEY,
+      preference,
+      Date.now(),
+    );
+  } catch (e) {
+    if (isDbUnavailable(e)) return;
+    throw e;
+  }
 }
 
 export interface WorkTimerSettings {

@@ -52,3 +52,5 @@ export interface AppSetting {
   value: string;
   updated_at: number;
 }
+
+export type ThemePreference = 'system' | 'light' | 'dark';
