@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, Text as RNText, View } from 'react-native';
 
 import {
   AlertBanner,
@@ -16,20 +16,11 @@ import {
   MAX_DAILY_DRIVING_REGULAR_MS,
   MAX_WEEKLY_DRIVING_MS,
 } from '@/constants/euRegulations';
+import { MODE_COLORS } from '@/constants/modeColors';
 import type { WorkMode } from '@/db/types';
 import { useDangerVibration } from '@/hooks/useDangerVibration';
 import { useWorkTimer } from '@/hooks/useWorkTimer';
 import { formatDuration } from '@/utils/format';
-
-// TODO: shares the mode→color association with ModeButton; extract a single
-// source if a third consumer appears.
-const modeDot: Record<WorkMode, string> = {
-  driving: 'bg-driving',
-  other_work: 'bg-other-work',
-  standby: 'bg-standby',
-  break: 'bg-break',
-  rest: 'bg-rest',
-};
 
 export default function TimerScreen() {
   const { t } = useTranslation();
@@ -52,6 +43,13 @@ export default function TimerScreen() {
   const elapsedToMinute =
     Math.floor(counters.drivingSinceBreak / 60_000) * 60_000;
   const breakRemaining = DRIVING_BEFORE_BREAK_MS - elapsedToMinute;
+
+  // The hero card takes on the active mode's colour (accent bar, dot, label);
+  // with no session yet it falls back to a neutral muted tone.
+  const modeColor = currentMode ? MODE_COLORS[currentMode] : null;
+  const accentClass = modeColor ? modeColor.bg : 'bg-night-border';
+  const dotClass = modeColor ? modeColor.bg : 'bg-ink-muted';
+  const modeLabelClass = modeColor ? modeColor.text : 'text-ink-muted';
 
   const modeLabels: Record<WorkMode, string> = {
     driving: t('workTimer.modes.driving'),
@@ -87,19 +85,31 @@ export default function TimerScreen() {
       <View className="gap-4 px-4 pt-4">
         {alerts.length > 0 && <AlertBanner alert={alerts[0]} />}
 
-        <Card className="gap-3">
+        <View className="relative gap-2 overflow-hidden rounded-2xl border border-transparent bg-white p-4 shadow-sm dark:border-night-border dark:bg-night-elevated">
+          <View className={`absolute inset-x-0 top-0 h-1 ${accentClass}`} />
+
           <View className="flex-row items-center gap-2">
-            <View
-              className={`w-2.5 h-2.5 rounded-full ${currentMode ? modeDot[currentMode] : 'bg-ink-muted'}`}
-            />
+            <View className={`h-2.5 w-2.5 rounded-full ${dotClass}`} />
+            {currentMode && (
+              <RNText
+                className={`text-sm font-extrabold uppercase tracking-wide ${modeLabelClass}`}
+              >
+                {modeLabels[currentMode]}
+              </RNText>
+            )}
+          </View>
+
+          <View className="flex-row items-baseline justify-between">
             <Text variant="eyebrow">{t('workTimer.counters.sinceBreak')}</Text>
-            <Text variant="caption" className="ml-auto">
+            <Text variant="caption">
               / {formatDuration(DRIVING_BEFORE_BREAK_MS)}
             </Text>
           </View>
+
           <Text variant="hero">
             {formatDuration(counters.drivingSinceBreak)}
           </Text>
+
           <Text variant="caption">
             {breakRemaining > 0
               ? t('workTimer.breakRemaining', {
@@ -107,11 +117,12 @@ export default function TimerScreen() {
                 })
               : t('workTimer.breakRequired')}
           </Text>
+
           <ProgressBar
             value={counters.drivingSinceBreak}
             limit={DRIVING_BEFORE_BREAK_MS}
           />
-        </Card>
+        </View>
       </View>
 
       {/* Secondary counters, and where future cards (hints, fatigue…) slot in. */}
