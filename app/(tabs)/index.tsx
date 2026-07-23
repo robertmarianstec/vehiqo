@@ -19,7 +19,7 @@ import {
 import { MODE_COLORS } from '@/constants/modeColors';
 import type { WorkMode } from '@/db/types';
 import { useDangerVibration } from '@/hooks/useDangerVibration';
-import { useWorkTimer } from '@/hooks/useWorkTimer';
+import { useWorkTimerContext } from '@/hooks/WorkTimerProvider';
 import { formatDuration } from '@/utils/format';
 
 export default function TimerScreen() {
@@ -32,7 +32,7 @@ export default function TimerScreen() {
     todayBounds,
     todaySegments,
     switchMode,
-  } = useWorkTimer();
+  } = useWorkTimerContext();
 
   useDangerVibration(alerts);
 

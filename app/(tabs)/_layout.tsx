@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { WorkTimerProvider } from '@/hooks/WorkTimerProvider';
+
 // Tab bar sizing props are plain numbers, not NativeWind classes, so the icon,
 // label, and bar height are scaled in JS here. Floors keep the current phone
 // look; the cap only grows the bar on large screens.
@@ -29,79 +31,81 @@ export default function TabLayout() {
   );
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarLabelStyle: { fontSize: labelFontSize },
-        tabBarIconStyle: { width: iconSize, height: iconBoxHeight },
-        tabBarStyle: { height: barContentHeight + insets.bottom },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: t('tabs.timer'),
-          tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons
-              name="clock-outline"
-              size={iconSize}
-              color={color}
-            />
-          ),
+    <WorkTimerProvider>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarLabelStyle: { fontSize: labelFontSize },
+          tabBarIconStyle: { width: iconSize, height: iconBoxHeight },
+          tabBarStyle: { height: barContentHeight + insets.bottom },
         }}
-      />
-      <Tabs.Screen
-        name="daily-check"
-        options={{
-          title: t('tabs.dailyCheck'),
-          tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons
-              name="clipboard-check-outline"
-              size={iconSize}
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="map"
-        options={{
-          title: t('tabs.map'),
-          tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons
-              name="map-outline"
-              size={iconSize}
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="fatigue"
-        options={{
-          title: t('tabs.fatigue'),
-          tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons
-              name="head-alert-outline"
-              size={iconSize}
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: t('tabs.settings'),
-          tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons
-              name="cog-outline"
-              size={iconSize}
-              color={color}
-            />
-          ),
-        }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: t('tabs.timer'),
+            tabBarIcon: ({ color }) => (
+              <MaterialCommunityIcons
+                name="clock-outline"
+                size={iconSize}
+                color={color}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="daily-check"
+          options={{
+            title: t('tabs.dailyCheck'),
+            tabBarIcon: ({ color }) => (
+              <MaterialCommunityIcons
+                name="clipboard-check-outline"
+                size={iconSize}
+                color={color}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="map"
+          options={{
+            title: t('tabs.map'),
+            tabBarIcon: ({ color }) => (
+              <MaterialCommunityIcons
+                name="map-outline"
+                size={iconSize}
+                color={color}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="fatigue"
+          options={{
+            title: t('tabs.fatigue'),
+            tabBarIcon: ({ color }) => (
+              <MaterialCommunityIcons
+                name="head-alert-outline"
+                size={iconSize}
+                color={color}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="settings"
+          options={{
+            title: t('tabs.settings'),
+            tabBarIcon: ({ color }) => (
+              <MaterialCommunityIcons
+                name="cog-outline"
+                size={iconSize}
+                color={color}
+              />
+            ),
+          }}
+        />
+      </Tabs>
+    </WorkTimerProvider>
   );
 }
