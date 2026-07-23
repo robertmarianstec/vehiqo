@@ -1,26 +1,24 @@
 import '../global.css';
 import '@/i18n';
 
-import { DarkTheme, ThemeProvider } from '@react-navigation/native';
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider,
+} from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
-import { Appearance, Platform } from 'react-native';
+import { Appearance, Platform, useColorScheme } from 'react-native';
 
 import { getDatabase } from '@/db';
-
-// Dark is the default look, independent of the OS setting — many drivers run
-// older phones with no system dark mode, and night driving needs it. A proper
-// light/dark/system switch will land with the Settings screen.
-// react-native-web's Appearance is read-only — setColorScheme doesn't exist there.
-if (Platform.OS !== 'web') {
-  Appearance.setColorScheme('dark');
-}
+import { getThemePreference } from '@/db/queries';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
+  const colorScheme = useColorScheme();
 
   useEffect(() => {
     async function prepare() {
@@ -28,6 +26,15 @@ export default function RootLayout() {
         // getDatabase self-limits on web (the OPFS worker can hang there); on
         // native it resolves normally. Either way we never block the splash.
         await getDatabase();
+
+        // react-native-web's Appearance is read-only — setColorScheme doesn't
+        // exist there, so the web preview just follows the browser's own setting.
+        if (Platform.OS !== 'web') {
+          const preference = await getThemePreference();
+          Appearance.setColorScheme(
+            preference === 'system' ? null : preference,
+          );
+        }
       } catch (e) {
         // On web this is an expected UI-preview limitation, not a real bug —
         // console.error would trigger RN Web's on-screen LogBox overlay.
@@ -47,7 +54,7 @@ export default function RootLayout() {
   if (!ready) return null;
 
   return (
-    <ThemeProvider value={DarkTheme}>
+    <ThemeProvider value={colorScheme === 'light' ? DefaultTheme : DarkTheme}>
       <Stack screenOptions={{ headerShown: false }} />
     </ThemeProvider>
   );
