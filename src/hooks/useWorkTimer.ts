@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AppState } from 'react-native';
 
 import {
   BREAK_PRE_ALERT_BEFORE_LIMIT_MS,
@@ -31,7 +32,7 @@ import {
 
 const HOUR_MS = 60 * 60 * 1000;
 const TWO_WEEKS_MS = 14 * 24 * HOUR_MS;
-const TICK_INTERVAL_MS = 30_000;
+const TICK_INTERVAL_MS = 1_000;
 
 export interface WorkTimerCounters {
   drivingSinceBreak: number;
@@ -162,7 +163,19 @@ export function useWorkTimer(): UseWorkTimerReturn {
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), TICK_INTERVAL_MS);
-    return () => clearInterval(id);
+    // JS timers are throttled or paused while the app is backgrounded or the
+    // screen is locked — the driver's real use case (phone on the dash). A
+    // recompute on returning to foreground avoids showing a stale value until
+    // the next tick fires.
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        setNow(Date.now());
+      }
+    });
+    return () => {
+      clearInterval(id);
+      subscription.remove();
+    };
   }, []);
 
   const counters = useMemo(
