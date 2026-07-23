@@ -1,3 +1,4 @@
+import type { WorkMode } from '@/db/types';
 import type { WarningLevel } from '@/utils/compliance';
 
 export type AlertSeverity = WarningLevel;
@@ -54,8 +55,15 @@ export function buildTimerAlerts(
   warnings: CounterWarnings,
   percents: CounterPercents,
   isBreakDueSoon: boolean,
+  currentMode: WorkMode | null,
 ): TimerAlert[] {
   const alerts: TimerAlert[] = [];
+  // A driver already on a break or rest is actively complying with the
+  // driving-since-break limit. That counter only resets once the break/rest
+  // qualifies (see getDrivingSinceLastBreak) — before then it stays frozen at
+  // its pre-break value, which would otherwise read as "take a break soon"
+  // while the driver is already taking one.
+  const onQualifyingBreak = currentMode === 'break' || currentMode === 'rest';
 
   if (isBreakDueSoon && warnings.drivingSinceBreak !== 'danger') {
     alerts.push({
@@ -66,6 +74,7 @@ export function buildTimerAlerts(
   }
 
   for (const id of COUNTER_ORDER) {
+    if (id === 'drivingSinceBreak' && onQualifyingBreak) continue;
     const level = warnings[id];
     if (level !== null) {
       alerts.push({

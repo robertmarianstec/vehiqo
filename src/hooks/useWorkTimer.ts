@@ -185,13 +185,18 @@ export function useWorkTimer(): UseWorkTimerReturn {
   const warnings = useMemo(() => computeWarnings(counters), [counters]);
   const percents = useMemo(() => computePercents(counters), [counters]);
 
+  // While already on a break or rest, drivingSinceBreak is frozen (not yet
+  // reset — see getDrivingSinceLastBreak) rather than accumulating, so the
+  // pre-alert would otherwise fire for a break the driver is already taking.
   const isBreakDueSoon =
+    currentMode !== 'break' &&
+    currentMode !== 'rest' &&
     counters.drivingSinceBreak >=
-    DRIVING_BEFORE_BREAK_MS - BREAK_PRE_ALERT_BEFORE_LIMIT_MS;
+      DRIVING_BEFORE_BREAK_MS - BREAK_PRE_ALERT_BEFORE_LIMIT_MS;
 
   const alerts = useMemo(
-    () => buildTimerAlerts(warnings, percents, isBreakDueSoon),
-    [warnings, percents, isBreakDueSoon],
+    () => buildTimerAlerts(warnings, percents, isBreakDueSoon, currentMode),
+    [warnings, percents, isBreakDueSoon, currentMode],
   );
 
   const todayBounds = useMemo(() => getDayBounds(now), [now]);
