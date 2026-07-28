@@ -100,7 +100,6 @@ export default function TimerScreen() {
       </ScrollView>
 
       <View className="gap-2 px-4 pb-4 pt-4">
-        <View className="flex-row">{renderButton('driving')}</View>
         <View className="flex-row gap-2">
           {renderButton('other_work')}
           {renderButton('standby')}
@@ -109,6 +108,7 @@ export default function TimerScreen() {
           {renderButton('break')}
           {renderButton('rest')}
         </View>
+        <View className="flex-row">{renderButton('driving')}</View>
       </View>
     </ScreenContainer>
   );
