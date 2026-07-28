@@ -1,4 +1,7 @@
 {
+  "header": {
+    "offline": "Offline · zapisano lokalnie"
+  },
   "tabs": {
     "timer": "Czas pracy",
     "dailyCheck": "Przegląd",

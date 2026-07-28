@@ -1,9 +1,10 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Tabs } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { useWindowDimensions } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { GlobalPinnedHeader } from '@/components';
 import { WorkTimerProvider } from '@/hooks/WorkTimerProvider';
 
 // Tab bar sizing props are plain numbers, not NativeWind classes, so the icon,
@@ -32,80 +33,87 @@ export default function TabLayout() {
 
   return (
     <WorkTimerProvider>
-      <Tabs
-        screenOptions={{
-          headerShown: false,
-          tabBarLabelStyle: { fontSize: labelFontSize },
-          tabBarIconStyle: { width: iconSize, height: iconBoxHeight },
-          tabBarStyle: { height: barContentHeight + insets.bottom },
-        }}
-      >
-        <Tabs.Screen
-          name="index"
-          options={{
-            title: t('tabs.timer'),
-            tabBarIcon: ({ color }) => (
-              <MaterialCommunityIcons
-                name="clock-outline"
-                size={iconSize}
-                color={color}
-              />
-            ),
+      <View className="flex-1 bg-gray-50 dark:bg-night">
+        <GlobalPinnedHeader />
+        <Tabs
+          screenOptions={{
+            headerShown: false,
+            // Force icon-above-label. The library otherwise switches to
+            // labels-beside-icons whenever the tab area is wider than tall,
+            // which a short screen hits once the pinned header takes its space.
+            tabBarLabelPosition: 'below-icon',
+            tabBarLabelStyle: { fontSize: labelFontSize },
+            tabBarIconStyle: { width: iconSize, height: iconBoxHeight },
+            tabBarStyle: { height: barContentHeight + insets.bottom },
           }}
-        />
-        <Tabs.Screen
-          name="daily-check"
-          options={{
-            title: t('tabs.dailyCheck'),
-            tabBarIcon: ({ color }) => (
-              <MaterialCommunityIcons
-                name="clipboard-check-outline"
-                size={iconSize}
-                color={color}
-              />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="map"
-          options={{
-            title: t('tabs.map'),
-            tabBarIcon: ({ color }) => (
-              <MaterialCommunityIcons
-                name="map-outline"
-                size={iconSize}
-                color={color}
-              />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="fatigue"
-          options={{
-            title: t('tabs.fatigue'),
-            tabBarIcon: ({ color }) => (
-              <MaterialCommunityIcons
-                name="head-alert-outline"
-                size={iconSize}
-                color={color}
-              />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="settings"
-          options={{
-            title: t('tabs.settings'),
-            tabBarIcon: ({ color }) => (
-              <MaterialCommunityIcons
-                name="cog-outline"
-                size={iconSize}
-                color={color}
-              />
-            ),
-          }}
-        />
-      </Tabs>
+        >
+          <Tabs.Screen
+            name="index"
+            options={{
+              title: t('tabs.timer'),
+              tabBarIcon: ({ color }) => (
+                <MaterialCommunityIcons
+                  name="clock-outline"
+                  size={iconSize}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Tabs.Screen
+            name="daily-check"
+            options={{
+              title: t('tabs.dailyCheck'),
+              tabBarIcon: ({ color }) => (
+                <MaterialCommunityIcons
+                  name="clipboard-check-outline"
+                  size={iconSize}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Tabs.Screen
+            name="map"
+            options={{
+              title: t('tabs.map'),
+              tabBarIcon: ({ color }) => (
+                <MaterialCommunityIcons
+                  name="map-outline"
+                  size={iconSize}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Tabs.Screen
+            name="fatigue"
+            options={{
+              title: t('tabs.fatigue'),
+              tabBarIcon: ({ color }) => (
+                <MaterialCommunityIcons
+                  name="head-alert-outline"
+                  size={iconSize}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Tabs.Screen
+            name="settings"
+            options={{
+              title: t('tabs.settings'),
+              tabBarIcon: ({ color }) => (
+                <MaterialCommunityIcons
+                  name="cog-outline"
+                  size={iconSize}
+                  color={color}
+                />
+              ),
+            }}
+          />
+        </Tabs>
+      </View>
     </WorkTimerProvider>
   );
 }

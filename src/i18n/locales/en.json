@@ -1,4 +1,7 @@
 {
+  "header": {
+    "offline": "Offline · saved locally"
+  },
   "tabs": {
     "timer": "Work Timer",
     "dailyCheck": "Daily",
