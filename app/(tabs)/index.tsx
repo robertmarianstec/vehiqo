@@ -1,5 +1,8 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Link } from 'expo-router';
+import { styled } from 'nativewind';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, TouchableOpacity, View } from 'react-native';
 
 import {
   Card,
@@ -11,17 +14,25 @@ import {
 } from '@/components';
 import {
   MAX_BIWEEKLY_DRIVING_MS,
-  MAX_DAILY_DRIVING_REGULAR_MS,
   MAX_WEEKLY_DRIVING_MS,
 } from '@/constants/euRegulations';
 import type { WorkMode } from '@/db/types';
 import { useWorkTimerContext } from '@/hooks/WorkTimerProvider';
 import { formatDuration } from '@/utils/format';
 
+const Icon = styled(MaterialCommunityIcons);
+
 export default function TimerScreen() {
   const { t } = useTranslation();
-  const { currentMode, counters, isLoading, todayBounds, todaySegments, switchMode } =
-    useWorkTimerContext();
+  const {
+    currentMode,
+    counters,
+    isLoading,
+    todayBounds,
+    todaySegments,
+    dailyDrivingLimit,
+    switchMode,
+  } = useWorkTimerContext();
 
   const modeLabels: Record<WorkMode, string> = {
     driving: t('workTimer.modes.driving'),
@@ -62,10 +73,10 @@ export default function TimerScreen() {
             </Text>
             <ProgressBar
               value={counters.dailyDriving}
-              limit={MAX_DAILY_DRIVING_REGULAR_MS}
+              limit={dailyDrivingLimit}
             />
             <Text variant="timestamp">
-              / {formatDuration(MAX_DAILY_DRIVING_REGULAR_MS)}
+              / {formatDuration(dailyDrivingLimit)}
             </Text>
           </Card>
           <Card className="flex-1 gap-1.5">
@@ -95,6 +106,22 @@ export default function TimerScreen() {
             </Text>
           </Card>
         </View>
+
+        {/* The counters show the basic 9h variant; the driver has to be able to
+            see what they leave out without hunting for it. */}
+        <Link href="/limitations" asChild>
+          <TouchableOpacity
+            className="flex-row items-center justify-center gap-1.5 py-1"
+            accessibilityRole="link"
+          >
+            <Icon
+              name="information-outline"
+              size={14}
+              className="text-gray-500 dark:text-ink-muted"
+            />
+            <Text variant="timestamp">{t('limitations.link')}</Text>
+          </TouchableOpacity>
+        </Link>
 
         <DayTimelineBar segments={todaySegments} bounds={todayBounds} />
       </ScrollView>

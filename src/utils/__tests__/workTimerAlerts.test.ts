@@ -158,3 +158,57 @@ describe('buildTimerAlerts', () => {
     expect(alerts.map((a) => a.id)).toEqual(['drivingSinceBreak']);
   });
 });
+
+describe('buildTimerAlerts — daily driving extension', () => {
+  const noWarnings = {
+    drivingSinceBreak: null,
+    dailyDriving: null,
+    weeklyDriving: null,
+    biweeklyDriving: null,
+  };
+  const percents = {
+    drivingSinceBreak: 0,
+    dailyDriving: 105,
+    weeklyDriving: 0,
+    biweeklyDriving: 0,
+  };
+
+  it('reports an extension in use instead of the plain limit message', () => {
+    const alerts = buildTimerAlerts(
+      { ...noWarnings, dailyDriving: 'warning' },
+      percents,
+      false,
+      'driving',
+      { inUse: true, used: 1 },
+    );
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].messageKey).toBe(
+      'workTimer.warnings.dailyDriving.extensionInUse',
+    );
+    expect(alerts[0].severity).toBe('warning');
+    expect(alerts[0].used).toBe(1);
+  });
+
+  it('keeps the plain danger message when no extension is in use', () => {
+    const alerts = buildTimerAlerts(
+      { ...noWarnings, dailyDriving: 'danger' },
+      percents,
+      false,
+      'driving',
+      { inUse: false, used: 2 },
+    );
+    expect(alerts[0].messageKey).toBe('workTimer.warnings.dailyDriving.danger');
+    expect(alerts[0].percent).toBe(105);
+  });
+
+  it('leaves the other counters untouched', () => {
+    const alerts = buildTimerAlerts(
+      { ...noWarnings, dailyDriving: 'warning', weeklyDriving: 'danger' },
+      percents,
+      false,
+      'driving',
+      { inUse: true, used: 2 },
+    );
+    expect(alerts.map((a) => a.id)).toEqual(['weeklyDriving', 'dailyDriving']);
+  });
+});

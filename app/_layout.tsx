@@ -9,6 +9,7 @@ import {
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Appearance, Platform, useColorScheme } from 'react-native';
 
 import { getDatabase } from '@/db';
@@ -17,6 +18,7 @@ import { getThemePreference } from '@/db/queries';
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const { t } = useTranslation();
   const [ready, setReady] = useState(false);
   const colorScheme = useColorScheme();
 
@@ -55,7 +57,15 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'light' ? DefaultTheme : DarkTheme}>
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        {/* The only screen outside the tabs, so it needs the stack header to
+            give the driver a way back. */}
+        <Stack.Screen
+          name="limitations"
+          options={{ headerShown: true, title: t('limitations.title') }}
+        />
+      </Stack>
     </ThemeProvider>
   );
 }

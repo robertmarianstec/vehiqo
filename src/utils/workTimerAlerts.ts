@@ -23,6 +23,7 @@ export type TimerAlertId = 'breakDueSoon' | CounterAlertId;
 
 type MessageKey =
   | 'workTimer.warnings.breakDueSoon'
+  | 'workTimer.warnings.dailyDriving.extensionInUse'
   | `workTimer.warnings.${CounterAlertId}.${WarningLevel}`;
 
 export interface TimerAlert {
@@ -33,6 +34,13 @@ export interface TimerAlert {
   // counter-based alerts. breakDueSoon has no percent — it's a fixed 30-minute
   // pre-alert, not a threshold-based one.
   percent?: number;
+  /** How many of the week's two 10h extensions are spent, including this one. */
+  used?: number;
+}
+
+export interface DailyExtensionState {
+  inUse: boolean;
+  used: number;
 }
 
 const COUNTER_ORDER: CounterAlertId[] = [
@@ -56,6 +64,7 @@ export function buildTimerAlerts(
   percents: CounterPercents,
   isBreakDueSoon: boolean,
   currentMode: WorkMode | null,
+  dailyExtension: DailyExtensionState = { inUse: false, used: 0 },
 ): TimerAlert[] {
   const alerts: TimerAlert[] = [];
   // A driver already on a break or rest is actively complying with the
@@ -76,14 +85,26 @@ export function buildTimerAlerts(
   for (const id of COUNTER_ORDER) {
     if (id === 'drivingSinceBreak' && onQualifyingBreak) continue;
     const level = warnings[id];
-    if (level !== null) {
+    if (level === null) continue;
+
+    // Past 9h on an extension the driver still had, the plain "limit reached"
+    // wording would misstate a legal drive as a violation.
+    if (id === 'dailyDriving' && dailyExtension.inUse) {
       alerts.push({
         id,
         severity: level,
-        messageKey: `workTimer.warnings.${id}.${level}`,
-        percent: percents[id],
+        messageKey: 'workTimer.warnings.dailyDriving.extensionInUse',
+        used: dailyExtension.used,
       });
+      continue;
     }
+
+    alerts.push({
+      id,
+      severity: level,
+      messageKey: `workTimer.warnings.${id}.${level}`,
+      percent: percents[id],
+    });
   }
 
   return alerts.sort(

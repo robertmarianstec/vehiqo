@@ -1,5 +1,8 @@
 import type { WorkMode, WorkSession } from '@/db/types';
 import {
+  countExtensionsUsedThisWeek,
+  getDailyDrivingPeriods,
+  getDailyDrivingStatus,
   getDrivingSinceLastBreak,
   getLastRestPeriodEnd,
   sumModeTimeInRange,
@@ -267,5 +270,136 @@ describe('getLastRestPeriodEnd', () => {
     expect(getLastRestPeriodEnd(sessions, WEEKLY_MIN, 30 * HOUR)).toBe(
       25 * HOUR,
     );
+  });
+});
+
+describe('getDailyDrivingPeriods', () => {
+  it('returns nothing when no rest qualifies', () => {
+    const sessions = [session('driving', 0, 5 * HOUR), session('rest', 5 * HOUR, 12 * HOUR)];
+    expect(getDailyDrivingPeriods(sessions, 20 * HOUR)).toEqual([]);
+  });
+
+  it('opens a period at the end of a qualifying rest and leaves it open', () => {
+    const sessions = [session('rest', 0, 10 * HOUR)];
+    expect(getDailyDrivingPeriods(sessions, 20 * HOUR)).toEqual([
+      { start: 10 * HOUR, end: 20 * HOUR },
+    ]);
+  });
+
+  it('closes a period at the start of the next qualifying rest', () => {
+    const sessions = [
+      session('rest', 0, 10 * HOUR),
+      session('rest', 24 * HOUR, 34 * HOUR),
+    ];
+    expect(getDailyDrivingPeriods(sessions, 40 * HOUR)).toEqual([
+      { start: 10 * HOUR, end: 24 * HOUR },
+      { start: 34 * HOUR, end: 40 * HOUR },
+    ]);
+  });
+
+  it('ignores rests too short to end a daily period', () => {
+    const sessions = [
+      session('rest', 0, 10 * HOUR),
+      session('rest', 20 * HOUR, 26 * HOUR), // 6h — not a daily rest
+      session('rest', 40 * HOUR, 50 * HOUR),
+    ];
+    expect(getDailyDrivingPeriods(sessions, 60 * HOUR)).toEqual([
+      { start: 10 * HOUR, end: 40 * HOUR },
+      { start: 50 * HOUR, end: 60 * HOUR },
+    ]);
+  });
+
+  it('does not open a period from a rest that is still ongoing', () => {
+    const sessions = [session('rest', 0, null)];
+    expect(getDailyDrivingPeriods(sessions, 12 * HOUR)).toEqual([]);
+  });
+});
+
+describe('countExtensionsUsedThisWeek', () => {
+  const WEEK = 0;
+  // Two closed periods: the first drives 10h, the second 8h.
+  const sessions = [
+    session('rest', 0, 10 * HOUR),
+    session('driving', 10 * HOUR, 20 * HOUR), // 10h — extension
+    session('rest', 20 * HOUR, 30 * HOUR),
+    session('driving', 30 * HOUR, 38 * HOUR), // 8h — regular
+    session('rest', 38 * HOUR, 48 * HOUR),
+  ];
+
+  it('counts only periods that passed the regular limit', () => {
+    expect(countExtensionsUsedThisWeek(sessions, WEEK, 48 * HOUR, 60 * HOUR)).toBe(1);
+  });
+
+  it('excludes the period in progress', () => {
+    // Current period starts at 10h, so the 10h drive belongs to it, not history.
+    expect(countExtensionsUsedThisWeek(sessions, WEEK, 10 * HOUR, 60 * HOUR)).toBe(0);
+  });
+
+  it('excludes periods that began before this week', () => {
+    expect(
+      countExtensionsUsedThisWeek(sessions, 25 * HOUR, 48 * HOUR, 60 * HOUR),
+    ).toBe(0);
+  });
+
+  it('treats exactly 9h as not an extension', () => {
+    const exactly = [
+      session('rest', 0, 10 * HOUR),
+      session('driving', 10 * HOUR, 19 * HOUR),
+      session('rest', 19 * HOUR, 29 * HOUR),
+    ];
+    expect(countExtensionsUsedThisWeek(exactly, WEEK, 29 * HOUR, 40 * HOUR)).toBe(0);
+  });
+});
+
+describe('getDailyDrivingStatus', () => {
+  it('uses the regular thresholds below 9h', () => {
+    expect(getDailyDrivingStatus(4 * HOUR, 0).level).toBeNull();
+    expect(getDailyDrivingStatus(8.2 * HOUR, 0).level).toBe('warning');
+    expect(getDailyDrivingStatus(4 * HOUR, 0).extensionInUse).toBe(false);
+  });
+
+  it('reports danger exactly at the regular limit when no extension is left', () => {
+    expect(getDailyDrivingStatus(9 * HOUR, 2).level).toBe('danger');
+  });
+
+  it('warns rather than alarms past 9h while an extension remains', () => {
+    const status = getDailyDrivingStatus(9.5 * HOUR, 1);
+    expect(status.level).toBe('warning');
+    expect(status.extensionInUse).toBe(true);
+    expect(status.extensionsUsed).toBe(2);
+  });
+
+  it('counts the first extension as in use when none were spent yet', () => {
+    expect(getDailyDrivingStatus(9.5 * HOUR, 0).extensionsUsed).toBe(1);
+  });
+
+  it('is a violation past 9h once both extensions are spent', () => {
+    const status = getDailyDrivingStatus(9.5 * HOUR, 2);
+    expect(status.level).toBe('danger');
+    expect(status.extensionInUse).toBe(false);
+  });
+
+  it('is a violation past 10h even with extensions available', () => {
+    const status = getDailyDrivingStatus(10.5 * HOUR, 0);
+    expect(status.level).toBe('danger');
+    expect(status.extensionInUse).toBe(false);
+  });
+});
+
+describe('getDailyDrivingStatus — displayed limit', () => {
+  it('stays at the regular limit before it is passed', () => {
+    expect(getDailyDrivingStatus(8 * HOUR, 0).limit).toBe(9 * HOUR);
+  });
+
+  it('rises to the extended limit once an extension applies', () => {
+    expect(getDailyDrivingStatus(9.5 * HOUR, 0).limit).toBe(10 * HOUR);
+  });
+
+  it('does not drop back once the extended limit is also exceeded', () => {
+    expect(getDailyDrivingStatus(10.5 * HOUR, 0).limit).toBe(10 * HOUR);
+  });
+
+  it('stays at the regular limit when no extension is available', () => {
+    expect(getDailyDrivingStatus(9.5 * HOUR, 2).limit).toBe(9 * HOUR);
   });
 });

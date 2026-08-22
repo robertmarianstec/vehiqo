@@ -1,9 +1,14 @@
 import {
+  DAILY_REST_REDUCED_MS,
+  MAX_DAILY_DRIVING_EXTENDED_MS,
+  MAX_DAILY_DRIVING_REGULAR_MS,
+  MAX_EXTENDED_DAILY_DRIVES_PER_WEEK,
   REQUIRED_BREAK_MS,
   SPLIT_BREAK_FIRST_MS,
   SPLIT_BREAK_SECOND_MS,
 } from '@/constants/euRegulations';
 import type { WorkMode, WorkSession } from '@/db/types';
+import { getWarningLevel, type WarningLevel } from '@/utils/compliance';
 
 // Sums time spent in `mode` that overlaps the [from, to) range.
 // Each session is clipped to the range boundaries.
@@ -62,6 +67,111 @@ export function getDrivingSinceLastBreak(
   }
 
   return accumulated;
+}
+
+export interface DailyDrivingPeriod {
+  start: number;
+  end: number;
+}
+
+// EU 561/2006 art. 4(k): a daily driving period runs between two daily rests,
+// not across a calendar day. Boundaries here are rests long enough to qualify
+// as a daily rest; driving recorded before the first such rest belongs to a
+// period whose start is unknown, so it is not returned.
+export function getDailyDrivingPeriods(
+  sessions: WorkSession[],
+  now: number,
+): DailyDrivingPeriod[] {
+  const qualifyingRests = sessions
+    .filter(
+      (s) =>
+        s.mode === 'rest' &&
+        (s.ended_at ?? now) - s.started_at >= DAILY_REST_REDUCED_MS,
+    )
+    .sort((a, b) => a.started_at - b.started_at);
+
+  const periods: DailyDrivingPeriod[] = [];
+  for (let i = 0; i < qualifyingRests.length; i += 1) {
+    const start = qualifyingRests[i].ended_at;
+    // An ongoing final rest has not ended, so no period starts from it yet.
+    if (start === null) continue;
+    periods.push({ start, end: qualifyingRests[i + 1]?.started_at ?? now });
+  }
+  return periods;
+}
+
+// How many of the week's two permitted 10h extensions are already spent.
+// Only periods that both began this week and ended before the current one are
+// counted — the period in progress is what the caller is deciding about.
+//
+// A period is assigned to the week it STARTED in. Neither the regulation nor
+// the Commission guidance resolves a period straddling Sunday midnight, so this
+// is a documented assumption, not a settled rule.
+export function countExtensionsUsedThisWeek(
+  sessions: WorkSession[],
+  weekStart: number,
+  currentPeriodStart: number,
+  now: number,
+): number {
+  let used = 0;
+  for (const period of getDailyDrivingPeriods(sessions, now)) {
+    if (period.start < weekStart || period.start >= currentPeriodStart) continue;
+    const driving = sumModeTimeInRange(
+      sessions,
+      'driving',
+      period.start,
+      period.end,
+    );
+    if (driving > MAX_DAILY_DRIVING_REGULAR_MS) used += 1;
+  }
+  return used;
+}
+
+export interface DailyDrivingStatus {
+  level: WarningLevel | null;
+  /** Driving has passed 9h on an extension the driver still had available. */
+  extensionInUse: boolean;
+  extensionsUsed: number;
+  /**
+   * The limit this period is measured against. Stays at 9h until driving
+   * actually passes it — showing 10h up front would present the exception as
+   * the norm — and once an extension applies it stays at 10h even after that
+   * is exceeded, so the figure doesn't drop back and hide what was overrun.
+   */
+  limit: number;
+}
+
+// EU 561/2006 art. 6(1): 9h is the norm, extendable to 10h at most twice a week.
+// Passing 9h while an extension remains is a warning, not a violation — calling
+// it one would be a false alarm, and a driver who learns the app cries wolf
+// stops believing it when it is right.
+export function getDailyDrivingStatus(
+  driving: number,
+  extensionsUsed: number,
+): DailyDrivingStatus {
+  const extensionAvailable =
+    extensionsUsed < MAX_EXTENDED_DAILY_DRIVES_PER_WEEK;
+
+  if (driving > MAX_DAILY_DRIVING_REGULAR_MS) {
+    const limit = extensionAvailable
+      ? MAX_DAILY_DRIVING_EXTENDED_MS
+      : MAX_DAILY_DRIVING_REGULAR_MS;
+    const withinExtension =
+      extensionAvailable && driving <= MAX_DAILY_DRIVING_EXTENDED_MS;
+    return {
+      level: withinExtension ? 'warning' : 'danger',
+      extensionInUse: withinExtension,
+      extensionsUsed: extensionAvailable ? extensionsUsed + 1 : extensionsUsed,
+      limit,
+    };
+  }
+
+  return {
+    level: getWarningLevel(driving, MAX_DAILY_DRIVING_REGULAR_MS),
+    extensionInUse: false,
+    extensionsUsed,
+    limit: MAX_DAILY_DRIVING_REGULAR_MS,
+  };
 }
 
 // Returns the end timestamp of the most recent 'rest' session lasting at least

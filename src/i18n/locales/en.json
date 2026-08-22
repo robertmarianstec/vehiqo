@@ -28,19 +28,20 @@
     },
     "currentMode": "Current mode",
     "noMode": "No mode selected",
-    "breakRemaining": "{{time}} until a mandatory break",
-    "breakRequired": "Mandatory break required",
+    "breakRemaining": "To the limit: {{time}}",
+    "breakRequired": "Limit reached",
     "warnings": {
-      "breakDueSoon": "Break due in 30 min",
+      "breakDueSoon": "30 min to the limit",
       "drivingSinceBreak": {
         "info": "Driving {{percent}}% of break interval",
-        "warning": "Take a break soon ({{percent}}%)",
-        "danger": "Mandatory break required now ({{percent}}%)"
+        "warning": "Break limit almost reached ({{percent}}%)",
+        "danger": "Break limit reached ({{percent}}%)"
       },
       "dailyDriving": {
         "info": "{{percent}}% of daily driving limit",
         "warning": "Daily driving limit almost reached ({{percent}}%)",
-        "danger": "Daily driving limit reached ({{percent}}%)"
+        "danger": "Daily driving limit reached ({{percent}}%)",
+        "extensionInUse": "Past the basic limit — extension in use ({{used}} of 2)"
       },
       "weeklyDriving": {
         "info": "{{percent}}% of weekly driving limit",
@@ -53,6 +54,20 @@
         "danger": "Two-week driving limit reached ({{percent}}%)"
       }
     }
+  },
+  "limitations": {
+    "link": "Basic variant — what we don't track",
+    "title": "What the app doesn't track",
+    "intro": "Vehiqo shows measured time next to the value set by the regulation. It does not judge whether you are compliant. The vehicle's tachograph and your own records remain the source of truth.",
+    "listTitle": "The counters do not account for:",
+    "reducedRests": "How many reduced daily rests you have used — the regulation allows three between weekly rests.",
+    "weeklyCompensation": "Compensating a reduced weekly rest.",
+    "multiManning": "Multi-manning — different rules apply with two drivers.",
+    "ferry": "Interrupting a rest on a ferry or train.",
+    "assumptionsTitle": "Assumptions made:",
+    "straddlingWeek": "A driving period crossing Sunday midnight is counted in the week it started. The regulation does not settle this case.",
+    "noRestOnRecord": "Until the app has recorded your first daily rest, the daily counter starts from midnight — driving before midnight may not be included.",
+    "extensionsFromRests": "How many extensions you have used is derived from the rests you record. If a rest was not recorded, the app may treat an extension as still available when it is not."
   },
   "settings": {
     "theme": {

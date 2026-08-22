@@ -28,19 +28,20 @@
     },
     "currentMode": "Aktualny tryb",
     "noMode": "Nie wybrano trybu",
-    "breakRemaining": "{{time}} do obowiązkowej przerwy",
-    "breakRequired": "Wymagana przerwa",
+    "breakRemaining": "Do limitu: {{time}}",
+    "breakRequired": "Limit osiągnięty",
     "warnings": {
-      "breakDueSoon": "Przerwa za 30 min",
+      "breakDueSoon": "30 min do limitu",
       "drivingSinceBreak": {
         "info": "Przejechano {{percent}}% czasu przed przerwą",
-        "warning": "Wkrótce wymagana przerwa ({{percent}}%)",
-        "danger": "Obowiązkowa przerwa teraz ({{percent}}%)"
+        "warning": "Limit przed przerwą prawie wyczerpany ({{percent}}%)",
+        "danger": "Limit przed przerwą osiągnięty ({{percent}}%)"
       },
       "dailyDriving": {
         "info": "{{percent}}% dziennego limitu jazdy",
         "warning": "Dzienny limit jazdy prawie wyczerpany ({{percent}}%)",
-        "danger": "Dzienny limit jazdy osiągnięty ({{percent}}%)"
+        "danger": "Dzienny limit jazdy osiągnięty ({{percent}}%)",
+        "extensionInUse": "Powyżej limitu podstawowego — wydłużenie w użyciu ({{used}} z 2)"
       },
       "weeklyDriving": {
         "info": "{{percent}}% tygodniowego limitu jazdy",
@@ -53,6 +54,20 @@
         "danger": "Dwutygodniowy limit jazdy osiągnięty ({{percent}}%)"
       }
     }
+  },
+  "limitations": {
+    "link": "Wariant podstawowy — czego nie liczymy",
+    "title": "Czego aplikacja nie liczy",
+    "intro": "Vehiqo pokazuje zmierzony czas obok wartości wynikającej z przepisu. Nie ocenia Twojej zgodności z przepisami. Źródłem prawdy pozostaje tachograf pojazdu i Twoja dokumentacja.",
+    "listTitle": "Liczniki nie uwzględniają:",
+    "reducedRests": "Liczby wykorzystanych skróconych odpoczynków dziennych — przepisy dopuszczają trzy między odpoczynkami tygodniowymi.",
+    "weeklyCompensation": "Odbioru skróconego odpoczynku tygodniowego.",
+    "multiManning": "Obsady dwuosobowej — przy dwóch kierowcach obowiązują inne zasady.",
+    "ferry": "Przerwania odpoczynku na promie lub w pociągu.",
+    "assumptionsTitle": "Przyjęte założenia:",
+    "straddlingWeek": "Okres jazdy przechodzący przez niedzielną północ zaliczamy do tygodnia, w którym się zaczął. Przepisy nie rozstrzygają tego przypadku.",
+    "noRestOnRecord": "Dopóki aplikacja nie zapisała pierwszego odpoczynku dziennego, licznik dzienny liczy od północy — jazda sprzed północy może nie być w nim ujęta.",
+    "extensionsFromRests": "Liczba wykorzystanych wydłużeń wynika z zapisanych odpoczynków. Jeśli odpoczynek nie został zapisany w aplikacji, może ona uznać wydłużenie za nadal dostępne, choć już nie jest."
   },
   "settings": {
     "theme": {
