@@ -18,17 +18,19 @@ const Icon = styled(MaterialCommunityIcons);
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
-// Idle buttons stay a neutral dark surface so the filled selected button stands
-// out by contrast; only the icon and label carry the mode color when idle.
+// Color is reserved for the mode the driver is actually in; five colored
+// buttons at once would compete with that signal.
 const idleSurface =
   'bg-gray-100 dark:bg-night-elevated border-gray-300 dark:border-night-border';
+const idleContent = 'text-gray-500 dark:text-ink-muted';
+const selectedContent = 'text-gray-900 dark:text-ink';
 
 const modeIcon: Record<WorkMode, IconName> = {
   driving: 'truck-outline',
-  other_work: 'wrench',
+  other_work: 'wrench-outline',
   standby: 'eye-outline',
-  break: 'coffee',
-  rest: 'bed',
+  break: 'coffee-outline',
+  rest: 'bed-outline',
 };
 
 export function ModeButton({
@@ -38,10 +40,8 @@ export function ModeButton({
   onPress,
 }: ModeButtonProps) {
   const colors = MODE_COLORS[mode];
-  // Selected surfaces are filled with the mode color, so the label/icon switch
-  // to a fixed dark text for contrast instead of the mode's own text color.
-  const color = selected ? 'text-night' : colors.text;
-  const surface = selected ? `${colors.bg} ${colors.border}` : idleSurface;
+  const color = selected ? selectedContent : idleContent;
+  const surface = selected ? `${colors.tint} ${colors.border}` : idleSurface;
   return (
     <TouchableOpacity
       className={`h-16 flex-1 flex-row items-center justify-center gap-2 rounded-2xl border-2 px-2 ${surface}`}
