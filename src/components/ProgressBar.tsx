@@ -7,10 +7,11 @@ interface ProgressBarProps {
   limit: number;
 }
 
-// Fill escalates with the same thresholds as the alert system, so the bar and
-// the banners always tell the same story.
-const fillColor: Record<WarningLevel, string> = {
-  info: 'bg-warning',
+// Only the two levels the alert system also paints get a color here: amber from
+// 90%, red at the limit. The informational 75% level is carried by the banner's
+// message instead — an amber fill through the last quarter of every driving
+// stint would wear out what amber means.
+const fillColor: Partial<Record<WarningLevel, string>> = {
   warning: 'bg-warning',
   danger: 'bg-danger',
 };
@@ -18,7 +19,7 @@ const fillColor: Record<WarningLevel, string> = {
 export function ProgressBar({ value, limit }: ProgressBarProps) {
   const level = getWarningLevel(value, limit);
   const pct = Math.max(0, Math.min(100, (value / limit) * 100));
-  const color = level ? fillColor[level] : 'bg-driving';
+  const color = (level && fillColor[level]) ?? 'bg-driving';
   return (
     <View className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-night-border">
       <View
