@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "vehiqo",
+    "name": "Vehiqo",
     "slug": "vehiqo",
     "scheme": "vehiqo",
     "version": "1.0.0",
@@ -27,12 +27,13 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "owner": "robertmarianstec",
+    "plugins": ["expo-localization", "expo-router", "expo-sqlite", "expo-font"],
     "extra": {
+      "router": {},
       "eas": {
-        "projectId": "ac84fddf-c173-4151-bae7-1b0c26d1f40c"
+        "projectId": "13c2ee88-4960-4868-95cf-460c412c83b7"
       }
-    },
-    "owner": "robert-stec-tech",
-    "plugins": ["expo-localization", "expo-router", "expo-sqlite", "expo-font"]
+    }
   }
 }
