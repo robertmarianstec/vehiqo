@@ -275,7 +275,10 @@ describe('getLastRestPeriodEnd', () => {
 
 describe('getDailyDrivingPeriods', () => {
   it('returns nothing when no rest qualifies', () => {
-    const sessions = [session('driving', 0, 5 * HOUR), session('rest', 5 * HOUR, 12 * HOUR)];
+    const sessions = [
+      session('driving', 0, 5 * HOUR),
+      session('rest', 5 * HOUR, 12 * HOUR),
+    ];
     expect(getDailyDrivingPeriods(sessions, 20 * HOUR)).toEqual([]);
   });
 
@@ -327,12 +330,16 @@ describe('countExtensionsUsedThisWeek', () => {
   ];
 
   it('counts only periods that passed the regular limit', () => {
-    expect(countExtensionsUsedThisWeek(sessions, WEEK, 48 * HOUR, 60 * HOUR)).toBe(1);
+    expect(
+      countExtensionsUsedThisWeek(sessions, WEEK, 48 * HOUR, 60 * HOUR),
+    ).toBe(1);
   });
 
   it('excludes the period in progress', () => {
     // Current period starts at 10h, so the 10h drive belongs to it, not history.
-    expect(countExtensionsUsedThisWeek(sessions, WEEK, 10 * HOUR, 60 * HOUR)).toBe(0);
+    expect(
+      countExtensionsUsedThisWeek(sessions, WEEK, 10 * HOUR, 60 * HOUR),
+    ).toBe(0);
   });
 
   it('excludes periods that began before this week', () => {
@@ -347,7 +354,9 @@ describe('countExtensionsUsedThisWeek', () => {
       session('driving', 10 * HOUR, 19 * HOUR),
       session('rest', 19 * HOUR, 29 * HOUR),
     ];
-    expect(countExtensionsUsedThisWeek(exactly, WEEK, 29 * HOUR, 40 * HOUR)).toBe(0);
+    expect(
+      countExtensionsUsedThisWeek(exactly, WEEK, 29 * HOUR, 40 * HOUR),
+    ).toBe(0);
   });
 });
 

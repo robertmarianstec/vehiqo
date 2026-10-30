@@ -1,5 +1,9 @@
 import type { WorkMode, WorkSession } from '@/db/types';
-import { getDayBounds, getDaySegments, getWeekStart } from '@/utils/dayTimeline';
+import {
+  getDayBounds,
+  getDaySegments,
+  getWeekStart,
+} from '@/utils/dayTimeline';
 
 function session(
   mode: WorkMode,

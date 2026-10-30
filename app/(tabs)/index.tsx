@@ -64,7 +64,10 @@ export default function TimerScreen() {
   return (
     <ScreenContainer>
       {/* Secondary counters, and where future cards (hints, fatigue…) slot in. */}
-      <ScrollView style={{ flex: 1 }} contentContainerClassName="px-4 pt-4 gap-4">
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerClassName="px-4 pt-4 gap-4"
+      >
         <View className="flex-row gap-3">
           <Card className="flex-1 gap-1.5">
             <Text variant="eyebrow">{t('workTimer.counters.daily')}</Text>

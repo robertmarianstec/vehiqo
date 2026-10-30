@@ -4,11 +4,7 @@ import { useWorkTimer, type UseWorkTimerReturn } from '@/hooks/useWorkTimer';
 
 const WorkTimerContext = createContext<UseWorkTimerReturn | null>(null);
 
-export function WorkTimerProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function WorkTimerProvider({ children }: { children: React.ReactNode }) {
   const value = useWorkTimer();
   return (
     <WorkTimerContext.Provider value={value}>

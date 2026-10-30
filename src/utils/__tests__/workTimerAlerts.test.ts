@@ -20,9 +20,7 @@ const NO_PERCENTS: CounterPercents = {
 
 describe('buildTimerAlerts', () => {
   it('returns no alerts when nothing is triggered', () => {
-    expect(buildTimerAlerts(NO_WARNINGS, NO_PERCENTS, false, null)).toEqual(
-      [],
-    );
+    expect(buildTimerAlerts(NO_WARNINGS, NO_PERCENTS, false, null)).toEqual([]);
   });
 
   it('builds a counter alert with matching severity, message key and live percent', () => {

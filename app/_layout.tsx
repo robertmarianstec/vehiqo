@@ -1,12 +1,12 @@
 import '../global.css';
 import '@/i18n';
 
+import { Stack } from 'expo-router';
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider,
-} from '@react-navigation/native';
-import { Stack } from 'expo-router';
+} from 'expo-router/react-navigation';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,7 +34,7 @@ export default function RootLayout() {
         if (Platform.OS !== 'web') {
           const preference = await getThemePreference();
           Appearance.setColorScheme(
-            preference === 'system' ? null : preference,
+            preference === 'system' ? 'unspecified' : preference,
           );
         }
       } catch (e) {

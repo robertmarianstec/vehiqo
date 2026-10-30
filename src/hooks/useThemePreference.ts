@@ -26,7 +26,7 @@ export function useThemePreference(): UseThemePreferenceReturn {
   const setPreference = useCallback(async (next: ThemePreference) => {
     setPreferenceState(next);
     if (Platform.OS !== 'web') {
-      Appearance.setColorScheme(next === 'system' ? null : next);
+      Appearance.setColorScheme(next === 'system' ? 'unspecified' : next);
     }
     await setThemePreference(next);
   }, []);

@@ -55,7 +55,9 @@ export default function TabLayout() {
                 <MaterialCommunityIcons
                   name="clock-outline"
                   size={iconSize}
-                  color={color}
+                  color={
+                    typeof color === 'number' ? undefined : (color ?? undefined)
+                  }
                 />
               ),
             }}
@@ -68,7 +70,9 @@ export default function TabLayout() {
                 <MaterialCommunityIcons
                   name="clipboard-check-outline"
                   size={iconSize}
-                  color={color}
+                  color={
+                    typeof color === 'number' ? undefined : (color ?? undefined)
+                  }
                 />
               ),
             }}
@@ -81,7 +85,9 @@ export default function TabLayout() {
                 <MaterialCommunityIcons
                   name="map-outline"
                   size={iconSize}
-                  color={color}
+                  color={
+                    typeof color === 'number' ? undefined : (color ?? undefined)
+                  }
                 />
               ),
             }}
@@ -94,7 +100,9 @@ export default function TabLayout() {
                 <MaterialCommunityIcons
                   name="head-alert-outline"
                   size={iconSize}
-                  color={color}
+                  color={
+                    typeof color === 'number' ? undefined : (color ?? undefined)
+                  }
                 />
               ),
             }}
@@ -107,7 +115,9 @@ export default function TabLayout() {
                 <MaterialCommunityIcons
                   name="cog-outline"
                   size={iconSize}
-                  color={color}
+                  color={
+                    typeof color === 'number' ? undefined : (color ?? undefined)
+                  }
                 />
               ),
             }}

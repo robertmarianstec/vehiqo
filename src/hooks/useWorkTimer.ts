@@ -233,7 +233,8 @@ export function useWorkTimer(): UseWorkTimerReturn {
 
   const todayBounds = useMemo(() => getDayBounds(now), [now]);
   const todaySegments = useMemo(
-    () => getDaySegments(sessions, todayBounds.dayStart, todayBounds.dayEnd, now),
+    () =>
+      getDaySegments(sessions, todayBounds.dayStart, todayBounds.dayEnd, now),
     [sessions, todayBounds, now],
   );
 

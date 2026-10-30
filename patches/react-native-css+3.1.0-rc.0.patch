@@ -1,0 +1,42 @@
+diff --git a/node_modules/react-native-css/dist/commonjs/components/index.cjs b/node_modules/react-native-css/dist/commonjs/components/index.cjs
+index 23af26c..abdcd7c 100644
+--- a/node_modules/react-native-css/dist/commonjs/components/index.cjs
++++ b/node_modules/react-native-css/dist/commonjs/components/index.cjs
+@@ -291,6 +291,9 @@ module.exports = {
+   get unstable_DEFAULT_INITIAL_NUM_TO_RENDER() {
+     return require("react-native").unstable_DEFAULT_INITIAL_NUM_TO_RENDER;
+   },
++  get AssetRegistry() {
++    return require("react-native").AssetRegistry;
++  },
+   get NativeComponentRegistry() {
+     return require("react-native").NativeComponentRegistry;
+   },
+diff --git a/node_modules/react-native-css/dist/module/components/index.cjs b/node_modules/react-native-css/dist/module/components/index.cjs
+index 23af26c..abdcd7c 100644
+--- a/node_modules/react-native-css/dist/module/components/index.cjs
++++ b/node_modules/react-native-css/dist/module/components/index.cjs
+@@ -291,6 +291,9 @@ module.exports = {
+   get unstable_DEFAULT_INITIAL_NUM_TO_RENDER() {
+     return require("react-native").unstable_DEFAULT_INITIAL_NUM_TO_RENDER;
+   },
++  get AssetRegistry() {
++    return require("react-native").AssetRegistry;
++  },
+   get NativeComponentRegistry() {
+     return require("react-native").NativeComponentRegistry;
+   },
+diff --git a/node_modules/react-native-css/src/components/index.cts b/node_modules/react-native-css/src/components/index.cts
+index ead6ff4..539b462 100644
+--- a/node_modules/react-native-css/src/components/index.cts
++++ b/node_modules/react-native-css/src/components/index.cts
+@@ -290,6 +290,9 @@ module.exports = {
+   get unstable_DEFAULT_INITIAL_NUM_TO_RENDER() {
+     return require("react-native").unstable_DEFAULT_INITIAL_NUM_TO_RENDER;
+   },
++  get AssetRegistry() {
++    return require("react-native").AssetRegistry;
++  },
+   get NativeComponentRegistry() {
+     return require("react-native").NativeComponentRegistry;
+   },

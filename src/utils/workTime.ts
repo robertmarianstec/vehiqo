@@ -115,7 +115,8 @@ export function countExtensionsUsedThisWeek(
 ): number {
   let used = 0;
   for (const period of getDailyDrivingPeriods(sessions, now)) {
-    if (period.start < weekStart || period.start >= currentPeriodStart) continue;
+    if (period.start < weekStart || period.start >= currentPeriodStart)
+      continue;
     const driving = sumModeTimeInRange(
       sessions,
       'driving',
