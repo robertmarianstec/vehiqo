@@ -146,6 +146,151 @@ describe('getDrivingSinceLastBreak', () => {
     expect(getDrivingSinceLastBreak(sessions, 13 * HOUR)).toBe(1 * HOUR);
   });
 
+  it.each([MIN, 45 * MIN - 1])(
+    'keeps previous driving after a completed rest of %i ms',
+    (duration) => {
+      const restEnd = 4 * HOUR + duration;
+      const now = restEnd + HOUR;
+      const sessions = [
+        session('driving', 0, 4 * HOUR),
+        session('rest', 4 * HOUR, restEnd),
+        session('driving', restEnd, now),
+      ];
+      expect(getDrivingSinceLastBreak(sessions, now)).toBe(5 * HOUR);
+    },
+  );
+
+  it.each(['break', 'rest'] as const)(
+    'resets an ongoing %s only when it reaches 45 minutes',
+    (mode) => {
+      const sessions = [
+        session('driving', 0, 4 * HOUR),
+        session(mode, 4 * HOUR, null),
+      ];
+      expect(getDrivingSinceLastBreak(sessions, 4 * HOUR)).toBe(4 * HOUR);
+      expect(getDrivingSinceLastBreak(sessions, 4 * HOUR + 45 * MIN - 1)).toBe(
+        4 * HOUR,
+      );
+      expect(getDrivingSinceLastBreak(sessions, 4 * HOUR + 45 * MIN)).toBe(0);
+    },
+  );
+
+  it('counts only new driving after a completed 45-minute rest', () => {
+    const restEnd = 4 * HOUR + 45 * MIN;
+    const now = restEnd + HOUR;
+    const sessions = [
+      session('driving', 0, 4 * HOUR),
+      session('rest', 4 * HOUR, restEnd),
+      session('driving', restEnd, now),
+    ];
+    expect(getDrivingSinceLastBreak(sessions, now)).toBe(HOUR);
+  });
+
+  it.each([
+    ['rest', 'rest'],
+    ['rest', 'break'],
+    ['break', 'rest'],
+  ] as const)(
+    'accepts a split 15 + 30 minutes using %s then %s',
+    (firstMode, secondMode) => {
+      const firstEnd = 2 * HOUR + 15 * MIN;
+      const secondStart = firstEnd + HOUR;
+      const sessions = [
+        session('driving', 0, 2 * HOUR),
+        session(firstMode, 2 * HOUR, firstEnd),
+        session('driving', firstEnd, secondStart),
+        session(secondMode, secondStart, null),
+      ];
+      expect(
+        getDrivingSinceLastBreak(sessions, secondStart + 30 * MIN - 1),
+      ).toBe(3 * HOUR);
+      expect(getDrivingSinceLastBreak(sessions, secondStart + 30 * MIN)).toBe(
+        0,
+      );
+    },
+  );
+
+  it.each([
+    ['rest', 'rest'],
+    ['rest', 'break'],
+    ['break', 'rest'],
+  ] as const)(
+    'does not accept a split 30 + 15 minutes using %s then %s',
+    (firstMode, secondMode) => {
+      const firstEnd = 2 * HOUR + 30 * MIN;
+      const secondStart = firstEnd + HOUR;
+      const now = secondStart + 15 * MIN;
+      const sessions = [
+        session('driving', 0, 2 * HOUR),
+        session(firstMode, 2 * HOUR, firstEnd),
+        session('driving', firstEnd, secondStart),
+        session(secondMode, secondStart, now),
+      ];
+      expect(getDrivingSinceLastBreak(sessions, now)).toBe(3 * HOUR);
+    },
+  );
+
+  it('preserves the first split part through a short rest', () => {
+    const sessions = [
+      session('driving', 0, 2 * HOUR),
+      session('break', 2 * HOUR, 2 * HOUR + 15 * MIN),
+      session('driving', 2 * HOUR + 15 * MIN, 3 * HOUR + 15 * MIN),
+      session('rest', 3 * HOUR + 15 * MIN, 3 * HOUR + 16 * MIN),
+      session('driving', 3 * HOUR + 16 * MIN, 4 * HOUR + 16 * MIN),
+      session('break', 4 * HOUR + 16 * MIN, 4 * HOUR + 46 * MIN),
+      session('driving', 4 * HOUR + 46 * MIN, null),
+    ];
+    expect(getDrivingSinceLastBreak(sessions, 5 * HOUR + 46 * MIN)).toBe(HOUR);
+  });
+
+  it.each(['break', 'rest'] as const)(
+    'keeps a continuous stop when switching from %s to the other recovery mode',
+    (firstMode) => {
+      const secondMode = firstMode === 'break' ? 'rest' : 'break';
+      const sessions = [
+        session('driving', 0, 4 * HOUR),
+        session(firstMode, 4 * HOUR, 4 * HOUR + 20 * MIN),
+        session(secondMode, 4 * HOUR + 20 * MIN, null),
+      ];
+      expect(getDrivingSinceLastBreak(sessions, 4 * HOUR + 45 * MIN - 1)).toBe(
+        4 * HOUR,
+      );
+      expect(getDrivingSinceLastBreak(sessions, 4 * HOUR + 45 * MIN)).toBe(0);
+    },
+  );
+
+  it.each(['break', 'rest'] as const)(
+    'does not count two adjacent %s records as two separate split parts',
+    (mode) => {
+      const sessions = [
+        session('driving', 0, 4 * HOUR),
+        session(mode, 4 * HOUR, 4 * HOUR + 15 * MIN),
+        session(mode, 4 * HOUR + 15 * MIN, null),
+      ];
+      expect(getDrivingSinceLastBreak(sessions, 4 * HOUR + 30 * MIN)).toBe(
+        4 * HOUR,
+      );
+      expect(getDrivingSinceLastBreak(sessions, 4 * HOUR + 45 * MIN)).toBe(0);
+    },
+  );
+
+  it.each(['other_work', 'standby', null] as const)(
+    'does not join recovery records across %s',
+    (mode) => {
+      const sessions = [
+        session('driving', 0, 4 * HOUR),
+        session('rest', 4 * HOUR, 4 * HOUR + 20 * MIN),
+        ...(mode
+          ? [session(mode, 4 * HOUR + 20 * MIN, 4 * HOUR + 21 * MIN)]
+          : []),
+        session('break', 4 * HOUR + 21 * MIN, null),
+      ];
+      expect(getDrivingSinceLastBreak(sessions, 4 * HOUR + 46 * MIN)).toBe(
+        4 * HOUR,
+      );
+    },
+  );
+
   it('treats other work and standby as neither adding nor resetting', () => {
     const sessions = [
       session('driving', 0, 2 * HOUR),

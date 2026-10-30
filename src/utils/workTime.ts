@@ -31,12 +31,8 @@ export function sumModeTimeInRange(
   return total;
 }
 
-// Accumulated driving time since the last qualifying break or rest.
-// Resets to zero when the driver completes a qualifying break or rest:
-//   - a single break of at least 45 min, OR
-//   - a split break: a part of at least 15 min followed later by a part of
-//     at least 30 min (order required by art. 7), OR
-//   - any rest period.
+// Both recovery modes use the art. 7 break thresholds for this counter;
+// selecting rest alone does not complete a qualifying interruption of driving.
 export function getDrivingSinceLastBreak(
   sessions: WorkSession[],
   now: number,
@@ -45,13 +41,24 @@ export function getDrivingSinceLastBreak(
   let accumulated = 0;
   let pendingFirstBreak = false;
 
-  for (const session of ordered) {
-    const duration = (session.ended_at ?? now) - session.started_at;
+  for (let index = 0; index < ordered.length; index += 1) {
+    const session = ordered[index];
+    let end = session.ended_at ?? now;
 
-    if (session.mode === 'rest') {
-      accumulated = 0;
-      pendingFirstBreak = false;
-    } else if (session.mode === 'break') {
+    if (session.mode === 'break' || session.mode === 'rest') {
+      // Changing the label does not interrupt a continuous off-duty period.
+      let next = ordered[index + 1];
+      while (
+        next &&
+        (next.mode === 'break' || next.mode === 'rest') &&
+        next.started_at === end
+      ) {
+        end = next.ended_at ?? now;
+        index += 1;
+        next = ordered[index + 1];
+      }
+
+      const duration = end - session.started_at;
       if (duration >= REQUIRED_BREAK_MS) {
         accumulated = 0;
         pendingFirstBreak = false;
@@ -62,7 +69,7 @@ export function getDrivingSinceLastBreak(
         pendingFirstBreak = true;
       }
     } else if (session.mode === 'driving') {
-      accumulated += duration;
+      accumulated += end - session.started_at;
     }
   }
 
