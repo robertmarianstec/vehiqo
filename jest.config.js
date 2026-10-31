@@ -1,3 +1,6 @@
+// Keep daylight-saving regression tests independent of the host timezone.
+process.env.TZ = 'Europe/Warsaw';
+
 module.exports = {
   preset: 'jest-expo',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],

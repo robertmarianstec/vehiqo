@@ -38,12 +38,31 @@ export function DayTimelineBar({ segments, bounds }: DayTimelineBarProps) {
         ))}
       </View>
 
-      <View className="flex-row justify-between">
-        {HOUR_MARKS.map((hour) => (
-          <Text key={hour} variant="timestamp">
-            {String(hour).padStart(2, '0')}
-          </Text>
-        ))}
+      <View className="relative flex-row justify-between">
+        {HOUR_MARKS.map((hour) => {
+          const mark = new Date(bounds.dayStart);
+          mark.setHours(hour, 0, 0, 0);
+          const isEdge = hour === 0 || hour === 24;
+
+          return (
+            <Text
+              key={hour}
+              variant="timestamp"
+              style={
+                isEdge
+                  ? undefined
+                  : {
+                      position: 'absolute',
+                      top: 0,
+                      left: `${((mark.getTime() - bounds.dayStart) / dayLengthMs) * 100}%`,
+                      transform: [{ translateX: '-50%' }],
+                    }
+              }
+            >
+              {String(hour).padStart(2, '0')}
+            </Text>
+          );
+        })}
       </View>
     </Card>
   );

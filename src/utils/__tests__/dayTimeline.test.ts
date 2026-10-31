@@ -25,7 +25,45 @@ const DAY_START = 1000;
 const DAY_END = 2000;
 const NOW = 3000;
 
+const CLOCK_CHANGE_DAYS = [
+  { name: 'spring forward', month: 2, day: 29, hours: 23 },
+  { name: 'autumn back', month: 9, day: 25, hours: 25 },
+];
+
 describe('getDaySegments', () => {
+  it.each(CLOCK_CHANGE_DAYS)(
+    'keeps late-evening driving on the $name day',
+    ({ month, day }) => {
+      const now = new Date(2026, month, day, 23, 45).getTime();
+      const start = new Date(2026, month, day, 23, 30).getTime();
+      const { dayStart, dayEnd } = getDayBounds(now);
+
+      expect(
+        getDaySegments(
+          [session('driving', start, null)],
+          dayStart,
+          dayEnd,
+          now,
+        ),
+      ).toEqual([{ mode: 'driving', start, end: now }]);
+    },
+  );
+
+  it.each(CLOCK_CHANGE_DAYS)(
+    'clips driving at the next midnight on the $name day',
+    ({ month, day }) => {
+      const now = new Date(2026, month, day + 1, 1).getTime();
+      const start = new Date(2026, month, day, 23, 30).getTime();
+      const end = new Date(2026, month, day + 1, 0, 30).getTime();
+      const midnight = new Date(2026, month, day + 1).getTime();
+      const { dayStart, dayEnd } = getDayBounds(start);
+
+      expect(
+        getDaySegments([session('driving', start, end)], dayStart, dayEnd, now),
+      ).toEqual([{ mode: 'driving', start, end: midnight }]);
+    },
+  );
+
   it('returns an empty array for no sessions', () => {
     expect(getDaySegments([], DAY_START, DAY_END, NOW)).toEqual([]);
   });
@@ -100,6 +138,23 @@ describe('getDaySegments', () => {
 });
 
 describe('getDayBounds', () => {
+  it.each(CLOCK_CHANGE_DAYS)(
+    'uses consecutive local midnights on the $name day ($hours hours)',
+    ({ month, day, hours }) => {
+      const noon = new Date(2026, month, day, 12).getTime();
+      const bounds = getDayBounds(noon);
+
+      expect(bounds).toEqual({
+        dayStart: new Date(2026, month, day).getTime(),
+        dayEnd: new Date(2026, month, day + 1).getTime(),
+      });
+      expect(bounds.dayEnd - bounds.dayStart).toBe(hours * 60 * 60 * 1000);
+      expect(
+        getDayBounds(new Date(2026, month, day, 23, 59).getTime()),
+      ).toEqual(bounds);
+    },
+  );
+
   it('returns local midnight to midnight spanning 24 hours', () => {
     const now = new Date(2026, 5, 15, 14, 30, 0).getTime();
     const { dayStart, dayEnd } = getDayBounds(now);

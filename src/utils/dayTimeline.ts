@@ -36,8 +36,9 @@ export interface DayBounds {
 export function getDayBounds(now: number): DayBounds {
   const start = new Date(now);
   start.setHours(0, 0, 0, 0);
-  const dayStart = start.getTime();
-  return { dayStart, dayEnd: dayStart + 24 * 60 * 60 * 1000 };
+  const end = new Date(now);
+  end.setHours(24, 0, 0, 0);
+  return { dayStart: start.getTime(), dayEnd: end.getTime() };
 }
 
 // Start of the local calendar week containing `now`. EU 561/2006 defines a week
