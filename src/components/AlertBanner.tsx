@@ -20,29 +20,25 @@ const severityStyle: Record<
     wrap: string;
     badge: string;
     badgeText: string;
-    text: string;
     icon: IconName;
   }
 > = {
   info: {
-    wrap: 'bg-info/10 border border-info/30',
-    badge: 'bg-info/30',
-    badgeText: 'text-info',
-    text: 'text-info',
+    wrap: 'bg-info-surface border border-info-line',
+    badge: 'bg-info-badge',
+    badgeText: 'text-info-icon',
     icon: 'information-outline',
   },
   warning: {
-    wrap: 'bg-warning/10 border border-warning/30',
-    badge: 'bg-warning',
-    badgeText: 'text-night',
-    text: 'text-warning',
+    wrap: 'bg-warning-surface border border-warning-line',
+    badge: 'bg-warning-badge',
+    badgeText: 'text-warning-icon',
     icon: 'alert-outline',
   },
   danger: {
-    wrap: 'bg-danger/10 border border-danger/30',
-    badge: 'bg-danger',
-    badgeText: 'text-white',
-    text: 'text-danger',
+    wrap: 'bg-danger-surface border border-danger-line',
+    badge: 'bg-danger-badge',
+    badgeText: 'text-danger-icon',
     icon: 'alert-octagon-outline',
   },
 };
@@ -70,7 +66,9 @@ export function AlertBanner({ alert }: AlertBannerProps) {
       >
         <Icon name={s.icon} size={16} className={s.badgeText} />
       </View>
-      <Text className={`flex-1 font-medium ${s.text}`}>{message}</Text>
+      <Text tone={alert.severity} className="flex-1 font-medium">
+        {message}
+      </Text>
     </View>
   );
 }

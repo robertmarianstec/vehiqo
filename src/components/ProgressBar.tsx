@@ -21,7 +21,7 @@ export function ProgressBar({ value, limit }: ProgressBarProps) {
   const pct = Math.max(0, Math.min(100, (value / limit) * 100));
   const color = (level && fillColor[level]) ?? 'bg-driving';
   return (
-    <View className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-night-border">
+    <View className="h-1.5 w-full overflow-hidden rounded-full bg-track">
       <View
         className={`h-full rounded-full ${color}`}
         style={{ width: `${pct}%` }}

@@ -120,7 +120,7 @@ export default function TimerScreen() {
             <Icon
               name="information-outline"
               size={14}
-              className="text-gray-500 dark:text-ink-muted"
+              className="text-ink-muted"
             />
             <Text variant="timestamp">{t('limitations.link')}</Text>
           </TouchableOpacity>

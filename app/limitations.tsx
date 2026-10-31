@@ -28,7 +28,7 @@ export default function LimitationsScreen() {
           <Text variant="eyebrow">{t('limitations.listTitle')}</Text>
           {NOT_TRACKED_KEYS.map((key) => (
             <View key={key} className="flex-row gap-2">
-              <Text variant="body" className="text-ink-muted">
+              <Text variant="body" tone="muted">
                 •
               </Text>
               <Text variant="body" className="flex-1">
@@ -42,7 +42,7 @@ export default function LimitationsScreen() {
           <Text variant="eyebrow">{t('limitations.assumptionsTitle')}</Text>
           {ASSUMPTION_KEYS.map((key) => (
             <View key={key} className="flex-row gap-2">
-              <Text variant="body" className="text-ink-muted">
+              <Text variant="body" tone="muted">
                 •
               </Text>
               <Text variant="body" className="flex-1">

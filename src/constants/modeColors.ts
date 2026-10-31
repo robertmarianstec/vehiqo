@@ -1,44 +1,43 @@
 import type { WorkMode } from '@/db/types';
 
-// Single source of truth for mode→color class names. NativeWind needs literal
-// class strings to statically detect them at build time, so these must stay
-// spelled out here (not built dynamically from the mode key elsewhere).
-// `tint` is the mode color at low opacity, for surfaces that carry text. The
-// five hues differ too much in lightness for any one text color to sit on them
-// at full strength — light text drops to 2.1:1 on standby's lime, dark text to
-// 3.3:1 on rest's violet — so the fill stays faint and the text stays neutral.
+// NativeWind needs literal class names to discover every mode at build time.
 export const MODE_COLORS: Record<
   WorkMode,
-  { bg: string; tint: string; border: string; text: string }
+  { bg: string; tint: string; border: string; text: string; dot: string }
 > = {
   driving: {
     bg: 'bg-driving',
-    tint: 'bg-driving/25',
-    border: 'border-driving',
-    text: 'text-driving',
+    tint: 'bg-driving-tint',
+    border: 'border-driving-edge',
+    text: 'text-driving-ink',
+    dot: 'bg-driving-edge',
   },
   other_work: {
     bg: 'bg-other-work',
-    tint: 'bg-other-work/25',
-    border: 'border-other-work',
-    text: 'text-other-work',
+    tint: 'bg-other-work-tint',
+    border: 'border-other-work-edge',
+    text: 'text-other-work-ink',
+    dot: 'bg-other-work-edge',
   },
   standby: {
     bg: 'bg-standby',
-    tint: 'bg-standby/25',
-    border: 'border-standby',
-    text: 'text-standby',
+    tint: 'bg-standby-tint',
+    border: 'border-standby-edge',
+    text: 'text-standby-ink',
+    dot: 'bg-standby-edge',
   },
   break: {
     bg: 'bg-break',
-    tint: 'bg-break/25',
-    border: 'border-break',
-    text: 'text-break',
+    tint: 'bg-break-tint',
+    border: 'border-break-edge',
+    text: 'text-break-ink',
+    dot: 'bg-break-edge',
   },
   rest: {
     bg: 'bg-rest',
-    tint: 'bg-rest/25',
-    border: 'border-rest',
-    text: 'text-rest',
+    tint: 'bg-rest-tint',
+    border: 'border-rest-edge',
+    text: 'text-rest-ink',
+    dot: 'bg-rest-edge',
   },
 };

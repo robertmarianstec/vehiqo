@@ -42,9 +42,7 @@ function ThemePicker() {
       <View className="flex-row gap-2">
         {options.map((option) => {
           const selected = preference === option;
-          const tint = selected
-            ? 'text-brand'
-            : 'text-gray-500 dark:text-ink-muted';
+          const tint = selected ? 'text-brand' : 'text-ink-muted';
           return (
             <TouchableOpacity
               key={option}
@@ -56,11 +54,13 @@ function ThemePicker() {
               className={`h-16 flex-1 items-center justify-center gap-1 rounded-2xl border-2 ${
                 selected
                   ? 'border-brand bg-brand/10'
-                  : 'border-gray-300 bg-gray-100 dark:border-night-border dark:bg-night-elevated'
+                  : 'border-line-control bg-surface-control'
               }`}
             >
               <Icon name={THEME_ICONS[option]} size={20} className={tint} />
-              <RNText className={`text-xs font-semibold ${tint}`}>
+              <RNText
+                className={`text-xs font-semibold ${selected ? 'text-ink' : 'text-ink-muted'}`}
+              >
                 {t(`settings.theme.${option}`)}
               </RNText>
             </TouchableOpacity>
@@ -110,7 +110,7 @@ const PREVIEW_FILLS = [40, 75, 89, 90, 100, 130];
 function ComponentPreview() {
   return (
     <View className="w-full gap-3">
-      <RNText className="text-sm font-bold uppercase tracking-wide text-gray-500 dark:text-ink-muted">
+      <RNText className="text-sm font-bold uppercase tracking-wide text-ink-muted">
         Component preview
       </RNText>
       {PREVIEW_ALERTS.map((alert) => (
@@ -119,9 +119,7 @@ function ComponentPreview() {
       <Card className="gap-3">
         {PREVIEW_FILLS.map((percent) => (
           <View key={percent} className="gap-1">
-            <RNText className="text-xs text-gray-500 dark:text-ink-muted">
-              {percent}%
-            </RNText>
+            <RNText className="text-xs text-ink-muted">{percent}%</RNText>
             <ProgressBar value={percent} limit={100} />
           </View>
         ))}
@@ -161,15 +159,15 @@ function DevTools() {
   return (
     <View className="w-full gap-4">
       <ComponentPreview />
-      <View className="w-full gap-2 rounded-2xl border border-danger/30 bg-danger/5 p-4">
-        <RNText className="text-sm font-bold uppercase tracking-wide text-danger">
+      <View className="w-full gap-2 rounded-2xl border border-danger-line bg-danger-surface p-4">
+        <RNText className="text-sm font-bold uppercase tracking-wide text-danger-ink">
           Developer tools
         </RNText>
         <TouchableOpacity
-          className="items-center rounded-xl bg-danger px-6 py-4 active:opacity-80"
+          className="items-center rounded-xl bg-danger-ink px-6 py-4 active:opacity-80"
           onPress={handleClear}
         >
-          <RNText className="text-base font-semibold text-white">
+          <RNText className="text-base font-semibold text-canvas">
             Clear all local data
           </RNText>
         </TouchableOpacity>

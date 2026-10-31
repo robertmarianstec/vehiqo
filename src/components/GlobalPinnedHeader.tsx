@@ -30,8 +30,8 @@ export function GlobalPinnedHeader() {
   const breakRemaining = DRIVING_BEFORE_BREAK_MS - elapsedToMinute;
 
   const modeColor = currentMode ? MODE_COLORS[currentMode] : null;
-  const accentClass = modeColor ? modeColor.bg : 'bg-night-border';
-  const dotClass = modeColor ? modeColor.bg : 'bg-ink-muted';
+  const accentClass = modeColor ? modeColor.bg : 'bg-line';
+  const dotClass = modeColor ? modeColor.dot : 'bg-ink-muted';
   const modeLabelClass = modeColor ? modeColor.text : 'text-ink-muted';
 
   const modeLabels: Record<WorkMode, string> = {
@@ -58,10 +58,7 @@ export function GlobalPinnedHeader() {
   return (
     // Topmost element on screen, so it owns the top safe-area inset; the
     // screens below (ScreenContainer) omit their top edge to avoid doubling it.
-    <SafeAreaView
-      edges={['top', 'left', 'right']}
-      className="bg-gray-50 dark:bg-night"
-    >
+    <SafeAreaView edges={['top', 'left', 'right']} className="bg-canvas">
       <View className="gap-4 px-4 pt-2">
         {isTimerTab && (
           <View className="flex-row items-center justify-between">
@@ -69,8 +66,8 @@ export function GlobalPinnedHeader() {
               {/* Static placeholder — country selection (module 5) isn't built
                   yet, so this isn't tappable. No chevron: a dropdown affordance
                   would falsely suggest it already does something. */}
-              <View className="self-start rounded-lg border border-gray-300 bg-gray-100 px-2 py-1 dark:border-night-border dark:bg-night-elevated">
-                <RNText className="text-xs font-bold tracking-wide text-gray-500 dark:text-ink-muted">
+              <View className="self-start rounded-lg border border-line bg-surface-control px-2 py-1">
+                <RNText className="text-xs font-bold tracking-wide text-ink-muted">
                   PL
                 </RNText>
               </View>
@@ -91,7 +88,7 @@ export function GlobalPinnedHeader() {
         {alerts.length > 0 && <AlertBanner alert={alerts[0]} />}
 
         {isTimerTab ? (
-          <View className="relative gap-2 overflow-hidden rounded-2xl border border-transparent bg-white p-4 shadow-sm dark:border-night-border dark:bg-night-elevated">
+          <View className="relative gap-2 overflow-hidden rounded-2xl border border-line bg-surface-raised p-4 shadow-sm">
             <View className={`absolute inset-x-0 top-0 h-1 ${accentClass}`} />
 
             {modeIndicator}
@@ -123,7 +120,7 @@ export function GlobalPinnedHeader() {
             />
           </View>
         ) : (
-          <View className="relative gap-2 overflow-hidden rounded-2xl border border-transparent bg-white p-3 shadow-sm dark:border-night-border dark:bg-night-elevated">
+          <View className="relative gap-2 overflow-hidden rounded-2xl border border-line bg-surface-raised p-3 shadow-sm">
             <View className={`absolute inset-x-0 top-0 h-1 ${accentClass}`} />
 
             <View className="flex-row items-center justify-between">

@@ -2,25 +2,23 @@ import '../global.css';
 import '@/i18n';
 
 import { Stack } from 'expo-router';
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from 'expo-router/react-navigation';
+import { ThemeProvider } from 'expo-router/react-navigation';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Appearance, Platform, useColorScheme } from 'react-native';
+import { Appearance, Platform } from 'react-native';
 
 import { getDatabase } from '@/db';
 import { getThemePreference } from '@/db/queries';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const { t } = useTranslation();
   const [ready, setReady] = useState(false);
-  const colorScheme = useColorScheme();
+  const theme = useAppTheme();
 
   useEffect(() => {
     async function prepare() {
@@ -56,7 +54,8 @@ export default function RootLayout() {
   if (!ready) return null;
 
   return (
-    <ThemeProvider value={colorScheme === 'light' ? DefaultTheme : DarkTheme}>
+    <ThemeProvider value={theme}>
+      <StatusBar style={theme.dark ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         {/* The only screen outside the tabs, so it needs the stack header to

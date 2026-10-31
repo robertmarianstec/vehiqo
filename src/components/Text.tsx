@@ -12,6 +12,7 @@ type TextVariant =
 
 interface AppTextProps extends TextProps {
   variant?: TextVariant;
+  tone?: 'primary' | 'muted' | 'info' | 'warning' | 'danger';
   children: React.ReactNode;
 }
 
@@ -21,21 +22,32 @@ const variantClasses: Record<TextVariant, string> = {
   heading: 'text-2xl font-bold',
   label: 'text-lg font-semibold',
   body: 'text-base',
-  caption: 'text-sm text-gray-500 dark:text-ink-muted',
-  eyebrow:
-    'text-sm font-extrabold uppercase tracking-wide text-gray-500 dark:text-ink-muted',
-  timestamp: 'text-xs text-gray-500 dark:text-ink-muted',
+  caption: 'text-sm',
+  eyebrow: 'text-sm font-extrabold uppercase tracking-wide',
+  timestamp: 'text-xs',
+};
+
+const toneClasses = {
+  primary: 'text-ink',
+  muted: 'text-ink-muted',
+  info: 'text-info-ink',
+  warning: 'text-warning-ink',
+  danger: 'text-danger-ink',
 };
 
 export function Text({
   variant = 'body',
+  tone,
   className,
   children,
   ...props
 }: AppTextProps) {
+  const secondary =
+    variant === 'caption' || variant === 'eyebrow' || variant === 'timestamp';
+  const color = toneClasses[tone ?? (secondary ? 'muted' : 'primary')];
   return (
     <RNText
-      className={`text-gray-900 dark:text-ink ${variantClasses[variant]} ${className ?? ''}`}
+      className={`${color} ${variantClasses[variant]} ${className ?? ''}`}
       {...props}
     >
       {children}

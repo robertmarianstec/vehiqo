@@ -8,7 +8,7 @@ interface CardProps {
 export function Card({ children, className }: CardProps) {
   return (
     <View
-      className={`bg-white dark:bg-night-card border border-transparent dark:border-night-border rounded-2xl p-4 shadow-sm ${className ?? ''}`}
+      className={`bg-surface border border-line rounded-2xl p-4 shadow-sm ${className ?? ''}`}
     >
       {children}
     </View>

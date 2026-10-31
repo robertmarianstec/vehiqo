@@ -14,7 +14,7 @@ interface ScreenContainerProps {
 // here to avoid padding it twice.
 export function ScreenContainer({ children, className }: ScreenContainerProps) {
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-night">
+    <View className="flex-1 bg-canvas">
       <SafeAreaView style={{ flex: 1 }} edges={['right', 'bottom', 'left']}>
         <View
           className={`w-full max-w-2xl flex-1 self-center ${className ?? ''}`}

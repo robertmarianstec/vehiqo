@@ -25,7 +25,7 @@ export function DayTimelineBar({ segments, bounds }: DayTimelineBarProps) {
       {/* Segments are absolutely positioned by percentage (not flex-row) so
           gaps in the data — periods with no logged session — correctly show
           as empty background instead of being squeezed out. */}
-      <View className="relative h-6 overflow-hidden rounded-lg bg-gray-100 dark:bg-night-elevated">
+      <View className="relative h-6 overflow-hidden rounded-lg bg-track">
         {segments.map((segment, index) => (
           <View
             key={index}

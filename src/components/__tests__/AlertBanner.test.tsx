@@ -78,10 +78,10 @@ describe('AlertBanner', () => {
       };
       await render(<AlertBanner alert={alert} />);
       expect(screen.getByRole('alert').props.className).toContain(
-        `bg-${severity}/10`,
+        `bg-${severity}-surface`,
       );
       expect(screen.getByText(/weekly/i).props.className).toContain(
-        `text-${severity}`,
+        `text-${severity}-ink`,
       );
     },
   );

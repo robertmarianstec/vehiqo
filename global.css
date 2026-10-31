@@ -19,47 +19,157 @@ body {
 }
 
 @theme {
-  /* Brand accent — electric blue */
-  --color-brand: #24abe8;
-  --color-brand-dark: #0091ce;
-
-  /* Work mode statuses — five vivid hues spread around the wheel so they read
-     apart at a glance in dark mode; kept at similar lightness/saturation so no
-     one mode looks washed out next to the others. */
+  /* Category fills keep their identity across both themes. */
   --color-driving: #1e824c;
   --color-other-work: #d35400;
   --color-standby: #9db82c;
   --color-break: #3b82f6;
   --color-rest: #8e44ad;
 
-  /* Alerts — info/warning/danger escalate in that order; success is a
-     separate confirmation color, not part of the escalation. */
-  --color-info: #24abe8;
-  --color-warning: #e3c23b;
-  --color-danger: #e64343;
-  --color-success: #5ac576;
-
-  /* Night surfaces — blue-tinted dark greys for the premium look, applied behind
-     the dark: variant (light mode falls back to Tailwind greys / white). */
-  --color-night: #0a0c11;
-  --color-night-sunken: #101317;
-  --color-night-card: #14171d;
-  --color-night-elevated: #1d2127;
-  --color-night-border: #2a2e34;
-
-  /* Text — used unconditionally (no dark: prefix) on screens redesigned for
-     the dark-first look; a real light-mode text pair is a separate future
-     step, not a fallback guess. */
-  --color-ink: #f3f5f9;
-  --color-ink-muted: #8e929a;
-
-  /* Hero timer — the single most important number on screen, sized well above
-     the default scale so it reads at a glance from the dashboard.
-     Fixed size on purpose: CSS clamp()+vw/vh does NOT resolve reliably in
-     react-native-css on native (a nested min() gets filtered to undefined →
-     no fontSize → tiny text on a real phone), even though it works in the web
-     preview. Any large-screen scaling must be done in JS (useWindowDimensions),
-     never via CSS clamp in this project. */
+  /* CSS viewport sizing has failed on native; scale in JavaScript if needed. */
   --text-hero: 4.625rem;
   --text-hero--line-height: 0.9;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-control: var(--surface-control);
+  --color-line: var(--line);
+  --color-line-control: var(--line-control);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-track: var(--track);
+  --color-brand: var(--brand);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-driving-ink: var(--driving-ink);
+  --color-other-work-ink: var(--other-work-ink);
+  --color-standby-ink: var(--standby-ink);
+  --color-break-ink: var(--break-ink);
+  --color-rest-ink: var(--rest-ink);
+  --color-driving-edge: var(--driving-edge);
+  --color-other-work-edge: var(--other-work-edge);
+  --color-standby-edge: var(--standby-edge);
+  --color-break-edge: var(--break-edge);
+  --color-rest-edge: var(--rest-edge);
+  --color-driving-tint: var(--driving-tint);
+  --color-other-work-tint: var(--other-work-tint);
+  --color-standby-tint: var(--standby-tint);
+  --color-break-tint: var(--break-tint);
+  --color-rest-tint: var(--rest-tint);
+  --color-info-surface: var(--info-surface);
+  --color-info-line: var(--info-line);
+  --color-info-ink: var(--info-ink);
+  --color-info-badge: var(--info-badge);
+  --color-info-icon: var(--info-icon);
+  --color-warning-surface: var(--warning-surface);
+  --color-warning-line: var(--warning-line);
+  --color-warning-ink: var(--warning-ink);
+  --color-warning-badge: var(--warning-badge);
+  --color-warning-icon: var(--warning-icon);
+  --color-danger-surface: var(--danger-surface);
+  --color-danger-line: var(--danger-line);
+  --color-danger-ink: var(--danger-ink);
+  --color-danger-badge: var(--danger-badge);
+  --color-danger-icon: var(--danger-icon);
+}
+
+/* Text and borders need stronger contrast than the category fills. */
+:root {
+  --canvas: #cbd3dc;
+  --surface: #dce4ec;
+  --surface-raised: #e7edf3;
+  --surface-control: #d6dfe8;
+  --surface-nav: #e1e8ee;
+  --line: #aebcca;
+  --line-control: #aebcca;
+  --ink: #192838;
+  --ink-muted: #49596b;
+  --track: #b8c5d1;
+  --brand: #00628f;
+  --success: #166736;
+  --warning: #956000;
+  --danger: #b42c3e;
+  --driving-ink: #155a35;
+  --other-work-ink: #913600;
+  --standby-ink: #495d09;
+  --break-ink: #1d46b8;
+  --rest-ink: #6c297e;
+  --driving-edge: #1e824c;
+  --other-work-edge: #b84700;
+  --standby-edge: #71871c;
+  --break-edge: #2563eb;
+  --rest-edge: #8e44ad;
+  --driving-tint: #bcd2d2;
+  --other-work-tint: #d6ccc8;
+  --standby-tint: #cedace;
+  --break-tint: #c0d2ea;
+  --rest-tint: #ccc9e0;
+  --info-surface: #cbdfea;
+  --info-line: #8ba9be;
+  --info-ink: #00547c;
+  --info-badge: #b5d1e3;
+  --info-icon: #00547c;
+  --warning-surface: #e6dbb6;
+  --warning-line: #bca36b;
+  --warning-ink: #75490b;
+  --warning-badge: #855400;
+  --warning-icon: #fff7e8;
+  --danger-surface: #ead1d8;
+  --danger-line: #c18d9a;
+  --danger-ink: #852032;
+  --danger-badge: #a42639;
+  --danger-icon: #fff7f8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #0a0c11;
+    --surface: #14171d;
+    --surface-raised: #1d2127;
+    --surface-control: #1d2127;
+    --surface-nav: #14171d;
+    --line: #2a2e34;
+    --line-control: #363d47;
+    --ink: #f3f5f9;
+    --ink-muted: #9da6b4;
+    --track: #2a2e34;
+    --brand: #24abe8;
+    --success: #5ac576;
+    --warning: #e3c23b;
+    --danger: #e64343;
+    --driving-ink: #57c98a;
+    --other-work-ink: #efa065;
+    --standby-ink: #b4ca55;
+    --break-ink: #83b0ff;
+    --rest-ink: #c294d7;
+    --driving-edge: #1e824c;
+    --other-work-edge: #d35400;
+    --standby-edge: #9db82c;
+    --break-edge: #3b82f6;
+    --rest-edge: #8e44ad;
+    --driving-tint: #1d3930;
+    --other-work-tint: #4b2e1d;
+    --standby-tint: #3d4728;
+    --break-tint: #25395b;
+    --rest-tint: #392a49;
+    --info-surface: #101c27;
+    --info-line: #204762;
+    --info-ink: #89cef1;
+    --info-badge: #204762;
+    --info-icon: #b0e1fb;
+    --warning-surface: #242218;
+    --warning-line: #665c2b;
+    --warning-ink: #f0d063;
+    --warning-badge: #e3c23b;
+    --warning-icon: #101317;
+    --danger-surface: #23161b;
+    --danger-line: #66303a;
+    --danger-ink: #ff9aa4;
+    --danger-badge: #e64343;
+    --danger-icon: #ffffff;
+  }
 }

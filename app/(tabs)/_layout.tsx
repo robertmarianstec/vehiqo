@@ -5,6 +5,7 @@ import { useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GlobalPinnedHeader } from '@/components';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { WorkTimerProvider } from '@/hooks/WorkTimerProvider';
 
 // Tab bar sizing props are plain numbers, not NativeWind classes, so the icon,
@@ -18,6 +19,7 @@ export default function TabLayout() {
   const { t } = useTranslation();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const theme = useAppTheme();
 
   const iconSize = Math.round(
     clampNum(24, Math.min(width * 0.06, height * 0.04), 32),
@@ -33,11 +35,13 @@ export default function TabLayout() {
 
   return (
     <WorkTimerProvider>
-      <View className="flex-1 bg-gray-50 dark:bg-night">
+      <View className="flex-1 bg-canvas">
         <GlobalPinnedHeader />
         <Tabs
           screenOptions={{
             headerShown: false,
+            tabBarActiveTintColor: theme.colors.primary,
+            tabBarInactiveTintColor: theme.colors.muted,
             // Force icon-above-label. The library otherwise switches to
             // labels-beside-icons whenever the tab area is wider than tall,
             // which a short screen hits once the pinned header takes its space.
