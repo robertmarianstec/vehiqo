@@ -77,6 +77,29 @@ export function getDrivingSinceLastBreak(
   return accumulated;
 }
 
+type RestPeriod = Pick<WorkSession, 'started_at' | 'ended_at'>;
+
+// Gaps and other activities interrupt a rest, even when its records are nearby.
+function getContinuousRestPeriods(sessions: WorkSession[]): RestPeriod[] {
+  const periods: RestPeriod[] = [];
+  let current: RestPeriod | undefined;
+  for (const session of [...sessions].sort(
+    (a, b) => a.started_at - b.started_at,
+  )) {
+    if (session.mode !== 'rest') {
+      current = undefined;
+      continue;
+    }
+    if (current && current.ended_at === session.started_at) {
+      current.ended_at = session.ended_at;
+    } else {
+      current = { started_at: session.started_at, ended_at: session.ended_at };
+      periods.push(current);
+    }
+  }
+  return periods;
+}
+
 export interface DailyDrivingPeriod {
   start: number;
   end: number;
@@ -90,13 +113,9 @@ export function getDailyDrivingPeriods(
   sessions: WorkSession[],
   now: number,
 ): DailyDrivingPeriod[] {
-  const qualifyingRests = sessions
-    .filter(
-      (s) =>
-        s.mode === 'rest' &&
-        (s.ended_at ?? now) - s.started_at >= DAILY_REST_REDUCED_MS,
-    )
-    .sort((a, b) => a.started_at - b.started_at);
+  const qualifyingRests = getContinuousRestPeriods(sessions).filter(
+    (rest) => (rest.ended_at ?? now) - rest.started_at >= DAILY_REST_REDUCED_MS,
+  );
 
   const periods: DailyDrivingPeriod[] = [];
   for (let i = 0; i < qualifyingRests.length; i += 1) {
@@ -197,7 +216,7 @@ export function getDailyDrivingStatus(
   };
 }
 
-// Returns the end timestamp of the most recent 'rest' session lasting at least
+// Returns the end timestamp of the most recent continuous rest lasting at least
 // `minDurationMs`, or null if no qualifying rest is found.
 // Ongoing rest sessions are treated as ending at `now`.
 export function getLastRestPeriodEnd(
@@ -205,9 +224,8 @@ export function getLastRestPeriodEnd(
   minDurationMs: number,
   now: number,
 ): number | null {
-  const ordered = [...sessions].sort((a, b) => b.started_at - a.started_at);
+  const ordered = getContinuousRestPeriods(sessions).reverse();
   for (const session of ordered) {
-    if (session.mode !== 'rest') continue;
     const end = session.ended_at ?? now;
     if (end - session.started_at >= minDurationMs) return end;
   }

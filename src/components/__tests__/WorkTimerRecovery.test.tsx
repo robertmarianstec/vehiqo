@@ -80,6 +80,38 @@ async function renderTimer() {
 }
 
 describe('work timer recovery', () => {
+  it('recognizes a daily rest split across touching records after loading history', async () => {
+    const monday = new Date(2026, 5, 15).getTime();
+    const firstRestEnd = monday + 9 * HOUR;
+    const restStart = firstRestEnd + 10 * HOUR;
+    const restEnd = restStart + 9 * HOUR;
+    jest.setSystemTime(restEnd + 2 * HOUR);
+    const closed = (
+      mode: WorkMode,
+      start: number,
+      end: number,
+    ): WorkSession => ({ ...openSession(mode, start), ended_at: end });
+    const current = openSession('driving', restEnd);
+    jest.mocked(getCurrentWorkSession).mockResolvedValue(current);
+    jest
+      .mocked(getWorkSessionsInRange)
+      .mockResolvedValue([
+        closed('rest', monday, firstRestEnd),
+        closed('driving', firstRestEnd, restStart),
+        closed('rest', restStart, restStart + 5 * HOUR),
+        closed('rest', restStart + 5 * HOUR, restEnd),
+        current,
+      ]);
+    jest.mocked(getWorkTimerSettings).mockResolvedValue({
+      lastDailyRestEnd: firstRestEnd,
+      lastWeeklyRestEnd: null,
+    });
+    await renderTimer();
+    expect(screen.getAllByText('02:00')).toHaveLength(2);
+    expect(screen.getAllByText('12:00')).toHaveLength(2);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it.each(['missing', 'stale'] as const)(
     'uses the same daily period for the counter and extensions with %s rest metadata',
     async (metadata) => {

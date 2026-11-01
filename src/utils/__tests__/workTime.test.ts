@@ -353,6 +353,23 @@ describe('getDrivingSinceLastBreak', () => {
 });
 
 describe('getLastRestPeriodEnd', () => {
+  it.each([
+    { minimum: 9 * HOUR, firstPart: 5 * HOUR },
+    { minimum: 24 * HOUR, firstPart: 12 * HOUR },
+    { minimum: 45 * HOUR, firstPart: 24 * HOUR },
+  ])(
+    'recognizes a continuous rest across records at the $minimum threshold',
+    ({ minimum, firstPart }) => {
+      const sessions = [
+        session('rest', 0, firstPart),
+        session('rest', firstPart, minimum),
+      ];
+      expect(getLastRestPeriodEnd(sessions, minimum, minimum + HOUR)).toBe(
+        minimum,
+      );
+    },
+  );
+
   const MIN_DURATION = 9 * HOUR; // daily rest minimum
 
   it('returns null when there are no sessions', () => {
@@ -419,6 +436,77 @@ describe('getLastRestPeriodEnd', () => {
 });
 
 describe('getDailyDrivingPeriods', () => {
+  it.each([
+    { first: 5, total: 9 },
+    { first: 9, total: 12 },
+  ])(
+    'treats $total hours in touching records as one rest',
+    ({ first, total }) => {
+      const sessions = [
+        session('rest', 0, first * HOUR),
+        session('rest', first * HOUR, total * HOUR),
+      ];
+      expect(getDailyDrivingPeriods(sessions, 15 * HOUR)).toEqual([
+        { start: total * HOUR, end: 15 * HOUR },
+      ]);
+    },
+  );
+
+  it('does not open a daily period between touching records when the rest is ongoing', () => {
+    const sessions = [
+      session('rest', 0, 9 * HOUR),
+      session('rest', 9 * HOUR, null),
+    ];
+    expect(getDailyDrivingPeriods(sessions, 12 * HOUR)).toEqual([]);
+  });
+
+  it.each(['driving', 'other_work', 'standby', 'break'] as const)(
+    'does not merge daily rests separated by %s',
+    (mode) => {
+      const sessions = [
+        session('rest', 0, 5 * HOUR),
+        session(mode, 5 * HOUR, 5 * HOUR + MIN),
+        session('rest', 5 * HOUR + MIN, 9 * HOUR + MIN),
+      ];
+      expect(getDailyDrivingPeriods(sessions, 12 * HOUR)).toEqual([]);
+    },
+  );
+
+  it('does not assume that a gap in the records was rest', () => {
+    const sessions = [
+      session('rest', 0, 5 * HOUR),
+      session('rest', 5 * HOUR + 1, 9 * HOUR + 1),
+    ];
+    expect(getDailyDrivingPeriods(sessions, 12 * HOUR)).toEqual([]);
+  });
+
+  it('closes the previous period when a fragmented ongoing rest reaches nine hours', () => {
+    const sessions = [
+      session('rest', 0, 9 * HOUR),
+      session('driving', 9 * HOUR, 19 * HOUR),
+      session('rest', 19 * HOUR, 24 * HOUR),
+      session('rest', 24 * HOUR, null),
+    ];
+    expect(getDailyDrivingPeriods(sessions, 28 * HOUR - 1)).toEqual([
+      { start: 9 * HOUR, end: 28 * HOUR - 1 },
+    ]);
+    expect(getDailyDrivingPeriods(sessions, 28 * HOUR)).toEqual([
+      { start: 9 * HOUR, end: 19 * HOUR },
+    ]);
+  });
+
+  it('sorts touching records without modifying the input sessions', () => {
+    const sessions = [
+      session('rest', 5 * HOUR, 9 * HOUR),
+      session('rest', 0, 5 * HOUR),
+    ];
+    const original = sessions.map((record) => ({ ...record }));
+    expect(getDailyDrivingPeriods(sessions, 12 * HOUR)).toEqual([
+      { start: 9 * HOUR, end: 12 * HOUR },
+    ]);
+    expect(sessions).toEqual(original);
+  });
+
   it('returns nothing when no rest qualifies', () => {
     const sessions = [
       session('driving', 0, 5 * HOUR),
@@ -464,6 +552,19 @@ describe('getDailyDrivingPeriods', () => {
 });
 
 describe('countExtensionsUsedThisWeek', () => {
+  it('counts a past extension between continuous rests stored in several records', () => {
+    const records = [
+      session('rest', 0, 5 * HOUR),
+      session('rest', 5 * HOUR, 9 * HOUR),
+      session('driving', 9 * HOUR, 19 * HOUR),
+      session('rest', 19 * HOUR, 24 * HOUR),
+      session('rest', 24 * HOUR, 28 * HOUR),
+    ];
+    expect(countExtensionsUsedThisWeek(records, 0, 28 * HOUR, 30 * HOUR)).toBe(
+      1,
+    );
+  });
+
   const WEEK = 0;
   // Two closed periods: the first drives 10h, the second 8h.
   const sessions = [
