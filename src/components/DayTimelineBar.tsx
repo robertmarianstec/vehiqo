@@ -10,16 +10,21 @@ import { Text } from './Text';
 interface DayTimelineBarProps {
   segments: DaySegment[];
   bounds: DayBounds;
+  compact?: boolean;
 }
 
 const HOUR_MARKS = [0, 6, 12, 18, 24];
 
-export function DayTimelineBar({ segments, bounds }: DayTimelineBarProps) {
+export function DayTimelineBar({
+  segments,
+  bounds,
+  compact = false,
+}: DayTimelineBarProps) {
   const { t } = useTranslation();
   const dayLengthMs = bounds.dayEnd - bounds.dayStart;
 
   return (
-    <Card className="gap-2">
+    <Card compact={compact} className={compact ? 'gap-1' : 'gap-2'}>
       <Text variant="eyebrow">{t('workTimer.dayTimeline.title')}</Text>
 
       {/* Segments are absolutely positioned by percentage (not flex-row) so

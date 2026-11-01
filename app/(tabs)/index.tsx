@@ -1,8 +1,14 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
 import { styled } from 'nativewind';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, TouchableOpacity, View } from 'react-native';
+import {
+  ScrollView,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import {
   Card,
@@ -24,6 +30,15 @@ const Icon = styled(MaterialCommunityIcons);
 
 export default function TimerScreen() {
   const { t } = useTranslation();
+  const { fontScale } = useWindowDimensions();
+  const [detailsHeight, setDetailsHeight] = useState<number>();
+  // Measure the remaining space after the pinned controls, not the whole phone.
+  const compactDetails =
+    detailsHeight !== undefined && detailsHeight < 144 * fontScale;
+  const counterCardClass = compactDetails ? 'flex-1 gap-0.5' : 'flex-1 gap-1.5';
+  const counterLabelClass = compactDetails
+    ? 'font-extrabold uppercase tracking-wide'
+    : undefined;
   const {
     currentMode,
     counters,
@@ -65,12 +80,23 @@ export default function TimerScreen() {
     <ScreenContainer>
       {/* Secondary counters, and where future cards (hints, fatigue…) slot in. */}
       <ScrollView
+        testID="timer-details"
         style={{ flex: 1 }}
-        contentContainerClassName="px-4 pt-4 gap-4"
+        onLayout={({ nativeEvent }) =>
+          setDetailsHeight(nativeEvent.layout.height)
+        }
+        contentContainerClassName={
+          compactDetails ? 'px-4 pt-1 gap-2' : 'px-4 pt-4 gap-4'
+        }
       >
-        <View className="flex-row gap-3">
-          <Card className="flex-1 gap-1.5">
-            <Text variant="eyebrow">{t('workTimer.counters.daily')}</Text>
+        <View className={compactDetails ? 'flex-row gap-2' : 'flex-row gap-3'}>
+          <Card compact={compactDetails} className={counterCardClass}>
+            <Text
+              variant={compactDetails ? 'timestamp' : 'eyebrow'}
+              className={counterLabelClass}
+            >
+              {t('workTimer.counters.daily')}
+            </Text>
             <Text variant="heading">
               {formatDuration(counters.dailyDriving)}
             </Text>
@@ -82,8 +108,13 @@ export default function TimerScreen() {
               / {formatDuration(dailyDrivingLimit)}
             </Text>
           </Card>
-          <Card className="flex-1 gap-1.5">
-            <Text variant="eyebrow">{t('workTimer.counters.weekly')}</Text>
+          <Card compact={compactDetails} className={counterCardClass}>
+            <Text
+              variant={compactDetails ? 'timestamp' : 'eyebrow'}
+              className={counterLabelClass}
+            >
+              {t('workTimer.counters.weekly')}
+            </Text>
             <Text variant="heading">
               {formatDuration(counters.weeklyDriving)}
             </Text>
@@ -95,8 +126,13 @@ export default function TimerScreen() {
               / {formatDuration(MAX_WEEKLY_DRIVING_MS)}
             </Text>
           </Card>
-          <Card className="flex-1 gap-1.5">
-            <Text variant="eyebrow">{t('workTimer.counters.biweekly')}</Text>
+          <Card compact={compactDetails} className={counterCardClass}>
+            <Text
+              variant={compactDetails ? 'timestamp' : 'eyebrow'}
+              className={counterLabelClass}
+            >
+              {t('workTimer.counters.biweekly')}
+            </Text>
             <Text variant="heading">
               {formatDuration(counters.biweeklyDriving)}
             </Text>
@@ -126,7 +162,11 @@ export default function TimerScreen() {
           </TouchableOpacity>
         </Link>
 
-        <DayTimelineBar segments={todaySegments} bounds={todayBounds} />
+        <DayTimelineBar
+          segments={todaySegments}
+          bounds={todayBounds}
+          compact={compactDetails}
+        />
       </ScrollView>
 
       <View className="gap-2 px-4 pb-4 pt-4">

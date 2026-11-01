@@ -81,6 +81,26 @@ async function renderTimer() {
 }
 
 describe('work timer recovery', () => {
+  it('adapts to the space left for details without changing counter values or mode controls', async () => {
+    await renderTimer();
+    const label = () => screen.getByText(i18n.t('workTimer.counters.daily'));
+    const resizeDetails = async (height: number) =>
+      fireEvent(screen.getByTestId('timer-details'), 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 360, height } },
+      });
+
+    expect(label().props.className).toContain('text-sm');
+    await resizeDetails(64);
+    expect(label().props.className).toContain('text-xs');
+    expect(screen.getAllByText('04:00')).toHaveLength(4);
+    expect(screen.getAllByRole('button')).toHaveLength(5);
+
+    await resizeDetails(400);
+    expect(label().props.className).toContain('text-sm');
+    expect(screen.getAllByText('04:00')).toHaveLength(4);
+    expect(screen.getAllByRole('button')).toHaveLength(5);
+  });
+
   it('keeps the displayed driving total and restores the warning after a short rest', async () => {
     await renderTimer();
 

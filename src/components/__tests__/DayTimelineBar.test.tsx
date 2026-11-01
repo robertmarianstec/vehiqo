@@ -8,7 +8,7 @@ beforeAll(async () => {
   await i18n.changeLanguage('en');
 });
 
-describe('DayTimelineBar', () => {
+describe.each([false, true])('DayTimelineBar (compact=%s)', (compact) => {
   it.each([
     { name: 'ordinary', month: 5, day: 15, hours: 24, morningHours: 6 },
     { name: 'spring forward', month: 2, day: 29, hours: 23, morningHours: 5 },
@@ -18,6 +18,7 @@ describe('DayTimelineBar', () => {
     async ({ month, day, hours, morningHours }) => {
       await render(
         <DayTimelineBar
+          compact={compact}
           segments={[]}
           bounds={{
             dayStart: new Date(2026, month, day).getTime(),
