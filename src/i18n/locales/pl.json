@@ -10,6 +10,8 @@
     "settings": "Ustawienia"
   },
   "workTimer": {
+    "loadError": "Nie udało się odczytać zapisanych czasów. Liczniki są niedostępne.",
+    "saveError": "Nie udało się zapisać tej zmiany trybu. Sprawdź aktywny tryb i spróbuj ponownie.",
     "modes": {
       "driving": "Jazda",
       "other_work": "Inna praca",
@@ -78,6 +80,7 @@
     }
   },
   "common": {
+    "retry": "Spróbuj ponownie",
     "loading": "Ładowanie...",
     "error": "Coś poszło nie tak",
     "ok": "OK",

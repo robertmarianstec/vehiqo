@@ -6,6 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import type { PropsWithChildren } from 'react';
+import { Alert } from 'react-native';
 
 import { GlobalPinnedHeader } from '@/components/GlobalPinnedHeader';
 import {
@@ -80,6 +81,53 @@ async function renderTimer() {
 }
 
 describe('work timer recovery', () => {
+  it('shows a read error without counters or mode buttons and supports retry', async () => {
+    jest
+      .mocked(getCurrentWorkSession)
+      .mockRejectedValueOnce(new Error('read failed'));
+    await renderTimer();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      i18n.t('workTimer.loadError'),
+    );
+    expect(screen.queryByText('00:00')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Jazda/ })).toBeNull();
+    await fireEvent.press(
+      screen.getByRole('button', { name: i18n.t('common.retry') }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Jazda/ })).toBeOnTheScreen(),
+    );
+    expect(screen.getAllByText('04:00')).toHaveLength(4);
+  });
+
+  it('reports a failed write, preserves the selected mode, and allows another attempt', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    try {
+      await renderTimer();
+      jest
+        .mocked(startWorkSession)
+        .mockRejectedValueOnce(new Error('disk full'));
+      await fireEvent.press(screen.getByRole('button', { name: /Przerwa/ }));
+      await waitFor(() =>
+        expect(alert).toHaveBeenCalledWith(
+          i18n.t('common.error'),
+          i18n.t('workTimer.saveError'),
+        ),
+      );
+      expect(
+        screen.getByRole('button', { name: /Jazda/, selected: true }),
+      ).toBeOnTheScreen();
+      await fireEvent.press(screen.getByRole('button', { name: /Przerwa/ }));
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: /Przerwa/, selected: true }),
+        ).toBeOnTheScreen(),
+      );
+    } finally {
+      alert.mockRestore();
+    }
+  });
+
   it('recognizes a daily rest split across touching records after loading history', async () => {
     const monday = new Date(2026, 5, 15).getTime();
     const firstRestEnd = monday + 9 * HOUR;

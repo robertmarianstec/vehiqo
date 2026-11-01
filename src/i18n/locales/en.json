@@ -10,6 +10,8 @@
     "settings": "Settings"
   },
   "workTimer": {
+    "loadError": "Saved times could not be loaded. Counters are unavailable.",
+    "saveError": "This mode change could not be saved. Check the active mode and try again.",
     "modes": {
       "driving": "Driving",
       "other_work": "Other work",
@@ -78,6 +80,7 @@
     }
   },
   "common": {
+    "retry": "Try again",
     "loading": "Loading...",
     "error": "Something went wrong",
     "ok": "OK",

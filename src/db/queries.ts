@@ -4,6 +4,7 @@ import {
   WEEKLY_REST_REDUCED_MS,
 } from '@/constants/euRegulations';
 import { generateId } from '@/utils/id';
+import { getLastRestPeriodEnd } from '@/utils/workTime';
 
 import { getDatabase, WebDatabaseUnavailableError } from './index';
 import type { ThemePreference, WorkMode, WorkSession } from './types';
@@ -49,8 +50,20 @@ export async function getCurrentWorkSession(): Promise<WorkSession | null> {
   }
 }
 
-export async function startWorkSession(mode: WorkMode): Promise<WorkSession> {
+// A second button press must wait for the previous transaction to finish.
+let pendingWorkSession: Promise<unknown> = Promise.resolve();
+
+export function startWorkSession(mode: WorkMode): Promise<WorkSession> {
   const now = Date.now();
+  const next = pendingWorkSession.then(() => createWorkSession(mode, now));
+  pendingWorkSession = next.catch(() => undefined);
+  return next;
+}
+
+async function createWorkSession(
+  mode: WorkMode,
+  now: number,
+): Promise<WorkSession> {
   const id = generateId();
 
   let db: Awaited<ReturnType<typeof getDatabase>>;
@@ -73,13 +86,19 @@ export async function startWorkSession(mode: WorkMode): Promise<WorkSession> {
     throw e;
   }
 
+  let existing: WorkSession | null = null;
   await db.withTransactionAsync(async () => {
-    const prev = await db.getFirstAsync<{ mode: WorkMode; started_at: number }>(
-      `SELECT mode, started_at FROM work_sessions
+    const prev = await db.getFirstAsync<WorkSession>(
+      `SELECT * FROM work_sessions
        WHERE ended_at IS NULL
        ORDER BY started_at DESC
        LIMIT 1;`,
     );
+
+    if (prev?.mode === mode) {
+      existing = prev;
+      return;
+    }
 
     await db.runAsync(
       `UPDATE work_sessions
@@ -89,12 +108,18 @@ export async function startWorkSession(mode: WorkMode): Promise<WorkSession> {
       now,
     );
 
-    // Persist the rest end so the daily/weekly driving counters anchor to a
-    // precise point instead of scanning session history. The reduced legal
-    // minimums (9h daily, 24h weekly) qualify a rest as a counter reset.
+    // Read overlapping records as well: a continuous rest can start before
+    // this window or span several adjacent records. Weekly driving itself
+    // remains a calendar-week total, independent of this rest metadata.
     if (prev?.mode === 'rest') {
-      const duration = now - prev.started_at;
-      if (duration >= DAILY_REST_REDUCED_MS) {
+      const history = await db.getAllAsync<WorkSession>(
+        `SELECT * FROM work_sessions
+         WHERE started_at <= ? AND ended_at >= ?
+         ORDER BY started_at ASC;`,
+        now,
+        now - WEEKLY_REST_REDUCED_MS,
+      );
+      if (getLastRestPeriodEnd(history, DAILY_REST_REDUCED_MS, now) === now) {
         await db.runAsync(
           `INSERT OR REPLACE INTO app_settings (key, value, updated_at)
            VALUES ('last_daily_rest_end', ?, ?);`,
@@ -102,7 +127,7 @@ export async function startWorkSession(mode: WorkMode): Promise<WorkSession> {
           now,
         );
       }
-      if (duration >= WEEKLY_REST_REDUCED_MS) {
+      if (getLastRestPeriodEnd(history, WEEKLY_REST_REDUCED_MS, now) === now) {
         await db.runAsync(
           `INSERT OR REPLACE INTO app_settings (key, value, updated_at)
            VALUES ('last_weekly_rest_end', ?, ?);`,
@@ -123,15 +148,17 @@ export async function startWorkSession(mode: WorkMode): Promise<WorkSession> {
     );
   });
 
-  return {
-    id,
-    mode,
-    started_at: now,
-    ended_at: null,
-    created_at: now,
-    updated_at: now,
-    synced_at: null,
-  };
+  return (
+    existing ?? {
+      id,
+      mode,
+      started_at: now,
+      ended_at: null,
+      created_at: now,
+      updated_at: now,
+      synced_at: null,
+    }
+  );
 }
 
 export async function getWorkSessionsInRange(

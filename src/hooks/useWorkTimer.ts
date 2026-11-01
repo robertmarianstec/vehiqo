@@ -61,6 +61,8 @@ export interface UseWorkTimerReturn {
   alerts: TimerAlert[];
   isBreakDueSoon: boolean;
   isLoading: boolean;
+  loadError: boolean;
+  retryLoad: () => void;
   todayBounds: DayBounds;
   todaySegments: DaySegment[];
   /**
@@ -148,26 +150,55 @@ function computePercents(counters: WorkTimerCounters): CounterPercents {
 
 export function useWorkTimer(): UseWorkTimerReturn {
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [currentMode, setCurrentMode] = useState<WorkMode | null>(null);
   const [sessions, setSessions] = useState<WorkSession[]>([]);
   const [lastDailyRestEnd, setLastDailyRestEnd] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
+    let cancelled = false;
     async function load() {
-      const lookbackStart = Date.now() - TWO_WEEKS_MS;
-      const [current, historical, settings] = await Promise.all([
-        getCurrentWorkSession(),
-        getWorkSessionsInRange(lookbackStart, Date.now()),
-        getWorkTimerSettings(),
-      ]);
-      setCurrentMode(current?.mode ?? null);
-      setSessions(historical);
-      setLastDailyRestEnd(settings.lastDailyRestEnd);
-      setIsLoading(false);
+      setIsLoading(true);
+      setLoadError(false);
+      try {
+        const loadTime = Date.now();
+        // The autumn clock change can make two calendar weeks exceed 14x24h.
+        const lookbackStart = Math.min(
+          loadTime - TWO_WEEKS_MS,
+          getWeekStart(getWeekStart(loadTime) - 1),
+        );
+        const [current, historical, settings] = await Promise.all([
+          getCurrentWorkSession(),
+          getWorkSessionsInRange(lookbackStart, loadTime),
+          getWorkTimerSettings(),
+        ]);
+        if (cancelled) return;
+        setCurrentMode(current?.mode ?? null);
+        setSessions(
+          current && !historical.some((session) => session.id === current.id)
+            ? [...historical, current]
+            : historical,
+        );
+        setLastDailyRestEnd(settings.lastDailyRestEnd);
+        setNow(Date.now());
+      } catch {
+        if (!cancelled) setLoadError(true);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
     }
     void load();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [loadAttempt]);
+
+  const retryLoad = useCallback(
+    () => setLoadAttempt((attempt) => attempt + 1),
+    [],
+  );
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), TICK_INTERVAL_MS);
@@ -238,31 +269,26 @@ export function useWorkTimer(): UseWorkTimerReturn {
     [sessions, todayBounds, now],
   );
 
-  const switchMode = useCallback(
-    async (mode: WorkMode) => {
-      const newSession = await startWorkSession(mode);
-      const closeTime = newSession.started_at;
+  const switchMode = useCallback(async (mode: WorkMode) => {
+    const newSession = await startWorkSession(mode);
+    const closeTime = newSession.started_at;
 
-      setCurrentMode(mode);
-      setSessions((prev) => [
-        ...prev.map((s) =>
-          s.ended_at === null
-            ? { ...s, ended_at: closeTime, updated_at: closeTime }
-            : s,
-        ),
-        newSession,
-      ]);
-      setNow(Date.now());
-
-      // startWorkSession may have updated app_settings if we just left a rest
-      // period — reload so the counters anchor to the new rest end immediately.
-      if (currentMode === 'rest') {
-        const settings = await getWorkTimerSettings();
-        setLastDailyRestEnd(settings.lastDailyRestEnd);
-      }
-    },
-    [currentMode],
-  );
+    setCurrentMode(newSession.mode);
+    // The closed rest in session history supplies the new daily boundary.
+    setSessions((prev) =>
+      prev.some((session) => session.id === newSession.id)
+        ? prev
+        : [
+            ...prev.map((s) =>
+              s.ended_at === null
+                ? { ...s, ended_at: closeTime, updated_at: closeTime }
+                : s,
+            ),
+            newSession,
+          ],
+    );
+    setNow(Date.now());
+  }, []);
 
   return {
     currentMode,
@@ -271,6 +297,8 @@ export function useWorkTimer(): UseWorkTimerReturn {
     alerts,
     isBreakDueSoon,
     isLoading,
+    loadError,
+    retryLoad,
     todayBounds,
     todaySegments,
     dailyDrivingLimit: dailyStatus.limit,

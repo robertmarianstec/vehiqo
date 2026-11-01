@@ -1,6 +1,6 @@
 import { usePathname } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Text as RNText, View } from 'react-native';
+import { Text as RNText, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AlertBanner } from '@/components/AlertBanner';
@@ -19,9 +19,31 @@ import { formatDuration } from '@/utils/format';
 export function GlobalPinnedHeader() {
   const { t } = useTranslation();
   const pathname = usePathname();
-  const { currentMode, counters, alerts } = useWorkTimerContext();
+  const { currentMode, counters, alerts, isLoading, loadError, retryLoad } =
+    useWorkTimerContext();
 
   useDangerVibration(alerts);
+
+  if (isLoading || loadError) {
+    return (
+      <SafeAreaView edges={['top', 'left', 'right']} className="bg-canvas">
+        {loadError && (
+          <View className="gap-3 p-4">
+            <Text tone="danger" accessibilityRole="alert">
+              {t('workTimer.loadError')}
+            </Text>
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={retryLoad}
+              className="items-center rounded-xl border border-line-control bg-surface-control p-4"
+            >
+              <Text>{t('common.retry')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </SafeAreaView>
+    );
+  }
 
   const isTimerTab = pathname === '/';
 

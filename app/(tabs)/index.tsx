@@ -4,6 +4,7 @@ import { styled } from 'nativewind';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  Alert,
   ScrollView,
   TouchableOpacity,
   useWindowDimensions,
@@ -43,6 +44,7 @@ export default function TimerScreen() {
     currentMode,
     counters,
     isLoading,
+    loadError,
     todayBounds,
     todaySegments,
     dailyDrivingLimit,
@@ -63,7 +65,9 @@ export default function TimerScreen() {
       label={modeLabels[mode]}
       selected={currentMode === mode}
       onPress={() => {
-        void switchMode(mode);
+        void switchMode(mode).catch(() => {
+          Alert.alert(t('common.error'), t('workTimer.saveError'));
+        });
       }}
     />
   );
@@ -75,6 +79,8 @@ export default function TimerScreen() {
       </ScreenContainer>
     );
   }
+
+  if (loadError) return null;
 
   return (
     <ScreenContainer>
