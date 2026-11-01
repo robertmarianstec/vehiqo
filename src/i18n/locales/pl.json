@@ -73,6 +73,8 @@
   },
   "settings": {
     "theme": {
+      "loadError": "Nie udało się odczytać ustawienia motywu.",
+      "saveError": "Nie udało się zapisać zmiany motywu. Spróbuj ponownie.",
       "title": "Wygląd",
       "system": "System",
       "light": "Jasny",

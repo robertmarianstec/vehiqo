@@ -50,14 +50,18 @@ export async function getCurrentWorkSession(): Promise<WorkSession | null> {
   }
 }
 
-// A second button press must wait for the previous transaction to finish.
-let pendingWorkSession: Promise<unknown> = Promise.resolve();
+// Writes on this connection must not enter another operation's transaction.
+let pendingWrite: Promise<unknown> = Promise.resolve();
+
+function queueWrite<T>(write: () => Promise<T>): Promise<T> {
+  const next = pendingWrite.then(write);
+  pendingWrite = next.catch(() => undefined);
+  return next;
+}
 
 export function startWorkSession(mode: WorkMode): Promise<WorkSession> {
   const now = Date.now();
-  const next = pendingWorkSession.then(() => createWorkSession(mode, now));
-  pendingWorkSession = next.catch(() => undefined);
-  return next;
+  return queueWrite(() => createWorkSession(mode, now));
 }
 
 async function createWorkSession(
@@ -189,7 +193,11 @@ export async function getWorkSessionsInRange(
 // would leave the cached handle in db/index.ts pointing at a database that no
 // longer exists, breaking every query until a full app restart. Children are
 // cleared before parents so the order never depends on ON DELETE CASCADE.
-export async function clearAllLocalData(): Promise<void> {
+export function clearAllLocalData(): Promise<void> {
+  return queueWrite(clearLocalData);
+}
+
+async function clearLocalData(): Promise<void> {
   const db = await getDatabase();
   await db.withTransactionAsync(async () => {
     await db.runAsync('DELETE FROM daily_check_items;');
@@ -222,7 +230,11 @@ export async function getThemePreference(): Promise<ThemePreference> {
   }
 }
 
-export async function setThemePreference(
+export function setThemePreference(preference: ThemePreference): Promise<void> {
+  return queueWrite(() => persistThemePreference(preference));
+}
+
+async function persistThemePreference(
   preference: ThemePreference,
 ): Promise<void> {
   try {

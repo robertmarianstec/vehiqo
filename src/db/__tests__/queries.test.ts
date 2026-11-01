@@ -2,9 +2,12 @@ import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 
 import { getDatabase } from '@/db';
 import {
+  clearAllLocalData,
   getCurrentWorkSession,
+  getThemePreference,
   getWorkSessionsInRange,
   getWorkTimerSettings,
+  setThemePreference,
   startWorkSession,
 } from '@/db/queries';
 import { SCHEMA_SQL } from '@/db/schema';
@@ -71,6 +74,34 @@ function seed(mode: WorkMode, start: number, end: number | null) {
 }
 
 describe('work session persistence', () => {
+  it('finishes queued mode writes before clearing local data', async () => {
+    seed('driving', NOW - HOUR, null);
+    await Promise.all([startWorkSession('break'), clearAllLocalData()]);
+    expect(await getCurrentWorkSession()).toBeNull();
+    expect(await getWorkSessionsInRange(NOW - 2 * HOUR, NOW + 1)).toEqual([]);
+    expect(await getWorkTimerSettings()).toEqual({
+      lastDailyRestEnd: null,
+      lastWeeklyRestEnd: null,
+    });
+  });
+
+  it('preserves a concurrent theme save when the mode change rolls back', async () => {
+    seed('rest', NOW - 24 * HOUR, null);
+    sqlite.exec(`CREATE TRIGGER reject_driving BEFORE INSERT ON work_sessions
+      WHEN NEW.mode = 'driving' BEGIN SELECT RAISE(ABORT, 'test write failure'); END;`);
+    const mode = startWorkSession('driving');
+    await Promise.resolve();
+    await Promise.resolve();
+    const theme = setThemePreference('dark');
+    const results = await Promise.allSettled([mode, theme]);
+    expect(results.map((result) => result.status)).toEqual([
+      'rejected',
+      'fulfilled',
+    ]);
+    expect(await getThemePreference()).toBe('dark');
+    expect((await getCurrentWorkSession())?.mode).toBe('rest');
+  });
+
   it.each([
     { duration: 9 * HOUR - 1, daily: null, weekly: null },
     { duration: 9 * HOUR, daily: NOW, weekly: null },

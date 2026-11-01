@@ -33,40 +33,70 @@ const THEME_ICONS: Record<ThemePreference, IconName> = {
 
 function ThemePicker() {
   const { t } = useTranslation();
-  const { preference, setPreference } = useThemePreference();
+  const {
+    preference,
+    isLoading,
+    isSaving,
+    loadError,
+    retryLoad,
+    setPreference,
+  } = useThemePreference();
   const options: ThemePreference[] = ['system', 'light', 'dark'];
 
   return (
     <View className="w-full gap-2">
       <Text variant="eyebrow">{t('settings.theme.title')}</Text>
-      <View className="flex-row gap-2">
-        {options.map((option) => {
-          const selected = preference === option;
-          const tint = selected ? 'text-brand' : 'text-ink-muted';
-          return (
-            <TouchableOpacity
-              key={option}
-              onPress={() => {
-                void setPreference(option);
-              }}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-              className={`h-16 flex-1 items-center justify-center gap-1 rounded-2xl border-2 ${
-                selected
-                  ? 'border-brand bg-brand/10'
-                  : 'border-line-control bg-surface-control'
-              }`}
-            >
-              <Icon name={THEME_ICONS[option]} size={20} className={tint} />
-              <RNText
-                className={`text-xs font-semibold ${selected ? 'text-ink' : 'text-ink-muted'}`}
+      {isLoading ? (
+        <Text>{t('common.loading')}</Text>
+      ) : loadError ? (
+        <View className="gap-3">
+          <Text tone="danger" accessibilityRole="alert">
+            {t('settings.theme.loadError')}
+          </Text>
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={retryLoad}
+            className="items-center rounded-xl border border-line-control bg-surface-control p-4"
+          >
+            <Text>{t('common.retry')}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View className="flex-row gap-2">
+          {options.map((option) => {
+            const selected = preference === option;
+            const tint = selected ? 'text-brand' : 'text-ink-muted';
+            return (
+              <TouchableOpacity
+                key={option}
+                onPress={() => {
+                  void setPreference(option).catch(() => {
+                    Alert.alert(
+                      t('common.error'),
+                      t('settings.theme.saveError'),
+                    );
+                  });
+                }}
+                accessibilityRole="button"
+                disabled={isSaving}
+                accessibilityState={{ selected, disabled: isSaving }}
+                className={`h-16 flex-1 items-center justify-center gap-1 rounded-2xl border-2 ${
+                  selected
+                    ? 'border-brand bg-brand/10'
+                    : 'border-line-control bg-surface-control'
+                }`}
               >
-                {t(`settings.theme.${option}`)}
-              </RNText>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+                <Icon name={THEME_ICONS[option]} size={20} className={tint} />
+                <RNText
+                  className={`text-xs font-semibold ${selected ? 'text-ink' : 'text-ink-muted'}`}
+                >
+                  {t(`settings.theme.${option}`)}
+                </RNText>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }

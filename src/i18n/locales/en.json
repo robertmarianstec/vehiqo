@@ -73,6 +73,8 @@
   },
   "settings": {
     "theme": {
+      "loadError": "The theme preference could not be loaded.",
+      "saveError": "The theme change could not be saved. Please try again.",
       "title": "Appearance",
       "system": "System",
       "light": "Light",
