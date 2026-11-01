@@ -25,6 +25,7 @@ import {
 } from '@/utils/dayTimeline';
 import {
   countExtensionsUsedThisWeek,
+  getCurrentDailyDrivingStart,
   getDailyDrivingStatus,
   getDrivingSinceLastBreak,
   sumModeTimeInRange,
@@ -77,12 +78,11 @@ export function computeCounters(
   now: number,
   lastDailyRestEnd: number | null,
 ): WorkTimerCounters {
-  // Without a recorded rest end the window must still be bounded: falling back
-  // to 0 made the counter sum every driving session ever stored, so a fresh
-  // install with any history reported impossible totals (e.g. 138h "today").
-  // The calendar day is the natural floor — a real anchor, once a rest is
-  // recorded, may legitimately sit earlier (driving through midnight).
-  const dailyStart = lastDailyRestEnd ?? getDayBounds(now).dayStart;
+  const dailyStart = getCurrentDailyDrivingStart(
+    sessions,
+    now,
+    lastDailyRestEnd,
+  );
   // EU 561/2006 art. 4(i), 6(2): weekly rest does not reset a calendar week.
   const weeklyStart = getWeekStart(now);
   // EU art. 6(3): max 90h across two consecutive calendar weeks — the current
@@ -193,7 +193,11 @@ export function useWorkTimer(): UseWorkTimerReturn {
   // The current daily period is what the driver is deciding about, so the
   // extensions already spent are counted from the periods that closed before it.
   const dailyStatus = useMemo(() => {
-    const currentPeriodStart = lastDailyRestEnd ?? getDayBounds(now).dayStart;
+    const currentPeriodStart = getCurrentDailyDrivingStart(
+      sessions,
+      now,
+      lastDailyRestEnd,
+    );
     const used = countExtensionsUsedThisWeek(
       sessions,
       getWeekStart(now),

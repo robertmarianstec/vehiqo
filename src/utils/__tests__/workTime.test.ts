@@ -487,6 +487,22 @@ describe('countExtensionsUsedThisWeek', () => {
     ).toBe(0);
   });
 
+  it('does not count current driving as a past extension when a newer rest boundary is known', () => {
+    const incompleteHistory = [
+      session('rest', 0, 9 * HOUR),
+      session('driving', 9 * HOUR, 17.5 * HOUR),
+      session('driving', 28 * HOUR, 29 * HOUR),
+    ];
+    expect(
+      countExtensionsUsedThisWeek(
+        incompleteHistory,
+        WEEK,
+        28 * HOUR,
+        29 * HOUR,
+      ),
+    ).toBe(0);
+  });
+
   it('excludes periods that began before this week', () => {
     expect(
       countExtensionsUsedThisWeek(sessions, 25 * HOUR, 48 * HOUR, 60 * HOUR),

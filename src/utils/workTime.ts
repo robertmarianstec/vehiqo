@@ -9,6 +9,7 @@ import {
 } from '@/constants/euRegulations';
 import type { WorkMode, WorkSession } from '@/db/types';
 import { getWarningLevel, type WarningLevel } from '@/utils/compliance';
+import { getDayBounds } from '@/utils/dayTimeline';
 
 // Sums time spent in `mode` that overlaps the [from, to) range.
 // Each session is clipped to the range boundaries.
@@ -107,6 +108,20 @@ export function getDailyDrivingPeriods(
   return periods;
 }
 
+// Reuse the period boundaries used for extensions; persisted metadata can be
+// missing or older than the session history, or newer than the loaded history.
+export function getCurrentDailyDrivingStart(
+  sessions: WorkSession[],
+  now: number,
+  lastDailyRestEnd: number | null,
+): number {
+  const historyStart = getDailyDrivingPeriods(sessions, now).at(-1)?.start;
+  if (historyStart === undefined) {
+    return lastDailyRestEnd ?? getDayBounds(now).dayStart;
+  }
+  return Math.max(historyStart, lastDailyRestEnd ?? historyStart);
+}
+
 // How many of the week's two permitted 10h extensions are already spent.
 // Only periods that both began this week and ended before the current one are
 // counted — the period in progress is what the caller is deciding about.
@@ -128,7 +143,7 @@ export function countExtensionsUsedThisWeek(
       sessions,
       'driving',
       period.start,
-      period.end,
+      Math.min(period.end, currentPeriodStart),
     );
     if (driving > MAX_DAILY_DRIVING_REGULAR_MS) used += 1;
   }

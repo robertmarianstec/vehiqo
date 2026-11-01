@@ -66,6 +66,53 @@ describe('computeCounters — dailyDriving', () => {
   // 2026-06-17 is a Wednesday, inside the Mon 15 – Sun 21 June calendar week.
   const WED_NOON = new Date(2026, 5, 17, 12, 0, 0).getTime();
 
+  it('recovers the rest end from history instead of cutting off driving at midnight', () => {
+    const restEnd = new Date(2026, 5, 16, 16).getTime();
+    const sessions = [
+      session('rest', restEnd - 9 * HOUR, restEnd),
+      session(
+        'driving',
+        new Date(2026, 5, 16, 22).getTime(),
+        new Date(2026, 5, 17, 3).getTime(),
+      ),
+    ];
+    expect(computeCounters(sessions, WED_NOON, null).dailyDriving).toBe(
+      5 * HOUR,
+    );
+  });
+
+  it.each([
+    { restDuration: 9 * HOUR - 1, expected: 4 * HOUR },
+    { restDuration: 9 * HOUR, expected: 2 * HOUR },
+    { restDuration: 11 * HOUR, expected: 2 * HOUR },
+    { restDuration: 24 * HOUR, expected: 2 * HOUR },
+  ])(
+    'uses a newer completed rest only when it qualifies ($restDuration ms)',
+    ({ restDuration, expected }) => {
+      const restEnd = 11 * HOUR + restDuration;
+      const sessions = [
+        session('rest', 0, 9 * HOUR),
+        session('driving', 9 * HOUR, 11 * HOUR),
+        session('rest', 11 * HOUR, restEnd),
+        session('driving', restEnd, null),
+      ];
+      expect(
+        computeCounters(sessions, restEnd + 2 * HOUR, 9 * HOUR).dailyDriving,
+      ).toBe(expected);
+    },
+  );
+
+  it('does not invent a rest end while the next rest is still ongoing', () => {
+    const sessions = [
+      session('rest', 0, 9 * HOUR),
+      session('driving', 9 * HOUR, 11 * HOUR),
+      session('rest', 11 * HOUR, null),
+    ];
+    expect(computeCounters(sessions, 22 * HOUR, 9 * HOUR).dailyDriving).toBe(
+      2 * HOUR,
+    );
+  });
+
   it('falls back to the start of the calendar day, not the epoch', () => {
     const sessions = [
       session(
@@ -178,6 +225,17 @@ describe('computeCounters — weeklyDriving', () => {
     expect(
       computeCounters(sessions, monday + 2 * HOUR, null).weeklyDriving,
     ).toBe(2 * HOUR);
+  });
+
+  it('keeps a newer recorded boundary when the loaded history is incomplete', () => {
+    const sessions = [
+      session('rest', 0, 9 * HOUR),
+      session('driving', 9 * HOUR, 11 * HOUR),
+      session('driving', 20 * HOUR, 22 * HOUR),
+    ];
+    expect(computeCounters(sessions, 22 * HOUR, 20 * HOUR).dailyDriving).toBe(
+      2 * HOUR,
+    );
   });
 
   it('clips a closed session at Monday midnight', () => {

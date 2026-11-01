@@ -80,6 +80,51 @@ async function renderTimer() {
 }
 
 describe('work timer recovery', () => {
+  it.each(['missing', 'stale'] as const)(
+    'uses the same daily period for the counter and extensions with %s rest metadata',
+    async (metadata) => {
+      const firstRestStart = new Date(2026, 5, 15).getTime();
+      const firstRestEnd = firstRestStart + 9 * HOUR;
+      const nextRestStart = firstRestEnd + 10 * HOUR;
+      const nextRestEnd = nextRestStart + 9 * HOUR;
+      const dayStart = new Date(2026, 5, 16, 12, 45).getTime();
+      const breakStart = dayStart + 8 * HOUR;
+      const finalStart = new Date(2026, 5, 16, 23).getTime();
+      jest.setSystemTime(finalStart + 90 * MINUTE);
+      const closed = (
+        mode: WorkMode,
+        start: number,
+        end: number,
+      ): WorkSession => ({ ...openSession(mode, start), ended_at: end });
+      const current = openSession('driving', finalStart);
+      jest.mocked(getCurrentWorkSession).mockResolvedValue(current);
+      jest
+        .mocked(getWorkSessionsInRange)
+        .mockResolvedValue([
+          closed('rest', firstRestStart, firstRestEnd),
+          closed('driving', firstRestEnd, nextRestStart),
+          closed('rest', nextRestStart, nextRestEnd),
+          closed('driving', dayStart, breakStart),
+          closed('break', breakStart, breakStart + 45 * MINUTE),
+          closed('other_work', breakStart + 45 * MINUTE, finalStart),
+          current,
+        ]);
+      jest.mocked(getWorkTimerSettings).mockResolvedValue({
+        lastDailyRestEnd: metadata === 'missing' ? null : firstRestEnd,
+        lastWeeklyRestEnd: null,
+      });
+      await renderTimer();
+
+      expect(screen.getByText('09:30')).toBeOnTheScreen();
+      expect(screen.getByText('01:30')).toBeOnTheScreen();
+      expect(screen.getAllByText('19:30')).toHaveLength(2);
+      expect(screen.getByText('/ 10:00')).toBeOnTheScreen();
+      expect(screen.getByRole('alert').props.accessibilityLabel).toBe(
+        i18n.t('workTimer.warnings.dailyDriving.extensionInUse', { used: 2 }),
+      );
+    },
+  );
+
   it('keeps earlier driving in the same week after a weekly rest', async () => {
     const mondayStart = new Date(2026, 5, 15, 8).getTime();
     const sundayStart = new Date(2026, 5, 14, 8).getTime();
