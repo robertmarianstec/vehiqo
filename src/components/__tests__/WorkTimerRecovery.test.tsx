@@ -77,10 +77,66 @@ async function renderTimer() {
     </WorkTimerProvider>,
   );
   await waitFor(() => expect(screen.queryByText('Ładowanie...')).toBeNull());
-  expect(screen.getAllByText('04:00')).toHaveLength(4);
 }
 
 describe('work timer recovery', () => {
+  it('keeps earlier driving in the same week after a weekly rest', async () => {
+    const mondayStart = new Date(2026, 5, 15, 8).getTime();
+    const sundayStart = new Date(2026, 5, 14, 8).getTime();
+    const restStart = new Date(2026, 5, 16, 8).getTime();
+    const restEnd = NOW - 4 * HOUR;
+    const current = openSession('driving', restEnd);
+    jest.mocked(getWorkSessionsInRange).mockResolvedValue([
+      {
+        ...openSession('driving', sundayStart),
+        ended_at: sundayStart + 5 * HOUR,
+      },
+      {
+        ...openSession('driving', mondayStart),
+        ended_at: mondayStart + 8 * HOUR,
+      },
+      { ...openSession('rest', restStart), ended_at: restEnd },
+      current,
+    ]);
+    jest.mocked(getWorkTimerSettings).mockResolvedValue({
+      lastDailyRestEnd: restEnd,
+      lastWeeklyRestEnd: restEnd,
+    });
+
+    await renderTimer();
+
+    expect(screen.getByText('12:00')).toBeOnTheScreen();
+    expect(screen.getByText('17:00')).toBeOnTheScreen();
+    expect(screen.getAllByText('04:00')).toHaveLength(2);
+  });
+
+  it('starts a new weekly total at midnight while the screen stays open', async () => {
+    const monday = new Date(2026, 5, 15).getTime();
+    jest.setSystemTime(monday - 1_000);
+    const restEnd = new Date(2026, 5, 14, 20).getTime();
+    const rest = {
+      ...openSession('rest', restEnd - 24 * HOUR),
+      ended_at: restEnd,
+    };
+    const current = openSession('driving', monday - 2 * HOUR);
+    jest.mocked(getCurrentWorkSession).mockResolvedValue(current);
+    jest.mocked(getWorkSessionsInRange).mockResolvedValue([rest, current]);
+    jest.mocked(getWorkTimerSettings).mockResolvedValue({
+      lastDailyRestEnd: restEnd,
+      lastWeeklyRestEnd: restEnd,
+    });
+    await renderTimer();
+    expect(screen.getAllByText('01:59')).toHaveLength(4);
+
+    await act(() => jest.advanceTimersByTime(1_000));
+    expect(screen.getByText('00:00')).toBeOnTheScreen();
+    expect(screen.getAllByText('02:00')).toHaveLength(3);
+
+    await act(() => jest.advanceTimersByTime(MINUTE));
+    expect(screen.getByText('00:01')).toBeOnTheScreen();
+    expect(screen.getAllByText('02:01')).toHaveLength(3);
+  });
+
   it('adapts to the space left for details without changing counter values or mode controls', async () => {
     await renderTimer();
     const label = () => screen.getByText(i18n.t('workTimer.counters.daily'));

@@ -76,15 +76,15 @@ export function computeCounters(
   sessions: WorkSession[],
   now: number,
   lastDailyRestEnd: number | null,
-  lastWeeklyRestEnd: number | null,
 ): WorkTimerCounters {
   // Without a recorded rest end the window must still be bounded: falling back
   // to 0 made the counter sum every driving session ever stored, so a fresh
   // install with any history reported impossible totals (e.g. 138h "today").
-  // The calendar day/week is the natural floor — a real anchor, once a rest is
+  // The calendar day is the natural floor — a real anchor, once a rest is
   // recorded, may legitimately sit earlier (driving through midnight).
   const dailyStart = lastDailyRestEnd ?? getDayBounds(now).dayStart;
-  const weeklyStart = lastWeeklyRestEnd ?? getWeekStart(now);
+  // EU 561/2006 art. 4(i), 6(2): weekly rest does not reset a calendar week.
+  const weeklyStart = getWeekStart(now);
   // EU art. 6(3): max 90h across two consecutive calendar weeks — the current
   // week plus the previous one. A rolling 14-day span would reach into a third
   // calendar week and overstate the total. Stepping back one millisecond from
@@ -151,9 +151,6 @@ export function useWorkTimer(): UseWorkTimerReturn {
   const [currentMode, setCurrentMode] = useState<WorkMode | null>(null);
   const [sessions, setSessions] = useState<WorkSession[]>([]);
   const [lastDailyRestEnd, setLastDailyRestEnd] = useState<number | null>(null);
-  const [lastWeeklyRestEnd, setLastWeeklyRestEnd] = useState<number | null>(
-    null,
-  );
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -167,7 +164,6 @@ export function useWorkTimer(): UseWorkTimerReturn {
       setCurrentMode(current?.mode ?? null);
       setSessions(historical);
       setLastDailyRestEnd(settings.lastDailyRestEnd);
-      setLastWeeklyRestEnd(settings.lastWeeklyRestEnd);
       setIsLoading(false);
     }
     void load();
@@ -191,8 +187,8 @@ export function useWorkTimer(): UseWorkTimerReturn {
   }, []);
 
   const counters = useMemo(
-    () => computeCounters(sessions, now, lastDailyRestEnd, lastWeeklyRestEnd),
-    [sessions, now, lastDailyRestEnd, lastWeeklyRestEnd],
+    () => computeCounters(sessions, now, lastDailyRestEnd),
+    [sessions, now, lastDailyRestEnd],
   );
   // The current daily period is what the driver is deciding about, so the
   // extensions already spent are counted from the periods that closed before it.
@@ -259,7 +255,6 @@ export function useWorkTimer(): UseWorkTimerReturn {
       if (currentMode === 'rest') {
         const settings = await getWorkTimerSettings();
         setLastDailyRestEnd(settings.lastDailyRestEnd);
-        setLastWeeklyRestEnd(settings.lastWeeklyRestEnd);
       }
     },
     [currentMode],

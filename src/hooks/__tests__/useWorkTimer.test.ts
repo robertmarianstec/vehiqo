@@ -29,18 +29,13 @@ function session(
 
 describe('computeCounters — drivingSinceBreak', () => {
   it('returns 0 with no sessions', () => {
-    const { drivingSinceBreak } = computeCounters([], 10 * HOUR, null, null);
+    const { drivingSinceBreak } = computeCounters([], 10 * HOUR, null);
     expect(drivingSinceBreak).toBe(0);
   });
 
   it('counts ongoing driving session', () => {
     const sessions = [session('driving', 0, null)];
-    const { drivingSinceBreak } = computeCounters(
-      sessions,
-      2 * HOUR,
-      null,
-      null,
-    );
+    const { drivingSinceBreak } = computeCounters(sessions, 2 * HOUR, null);
     expect(drivingSinceBreak).toBe(2 * HOUR);
   });
 
@@ -51,7 +46,7 @@ describe('computeCounters — drivingSinceBreak', () => {
       session('driving', 4 * HOUR + 45 * MIN, null),
     ];
     const now = 4 * HOUR + 45 * MIN + HOUR;
-    const { drivingSinceBreak } = computeCounters(sessions, now, null, null);
+    const { drivingSinceBreak } = computeCounters(sessions, now, null);
     expect(drivingSinceBreak).toBe(HOUR);
   });
 
@@ -62,12 +57,7 @@ describe('computeCounters — drivingSinceBreak', () => {
       session('other_work', 2 * HOUR, 3 * HOUR),
       session('driving', 3 * HOUR, null),
     ];
-    const { drivingSinceBreak } = computeCounters(
-      sessions,
-      4 * HOUR,
-      null,
-      null,
-    );
+    const { drivingSinceBreak } = computeCounters(sessions, 4 * HOUR, null);
     expect(drivingSinceBreak).toBe(2 * HOUR);
   });
 });
@@ -89,7 +79,7 @@ describe('computeCounters — dailyDriving', () => {
         new Date(2026, 5, 17, 10, 0, 0).getTime(),
       ),
     ];
-    const { dailyDriving } = computeCounters(sessions, WED_NOON, null, null);
+    const { dailyDriving } = computeCounters(sessions, WED_NOON, null);
     expect(dailyDriving).toBe(2 * HOUR);
   });
 
@@ -101,7 +91,7 @@ describe('computeCounters — dailyDriving', () => {
         new Date(2026, 5, 17, 3, 0, 0).getTime(),
       ),
     ];
-    const { dailyDriving } = computeCounters(sessions, WED_NOON, null, null);
+    const { dailyDriving } = computeCounters(sessions, WED_NOON, null);
     expect(dailyDriving).toBe(3 * HOUR);
   });
 
@@ -110,7 +100,7 @@ describe('computeCounters — dailyDriving', () => {
     const sessions = [
       session('driving', restEnd, new Date(2026, 5, 17, 1, 0, 0).getTime()),
     ];
-    const { dailyDriving } = computeCounters(sessions, WED_NOON, restEnd, null);
+    const { dailyDriving } = computeCounters(sessions, WED_NOON, restEnd);
     expect(dailyDriving).toBe(5 * HOUR);
   });
 
@@ -120,12 +110,7 @@ describe('computeCounters — dailyDriving', () => {
       session('rest', 3 * HOUR, 14 * HOUR),
       session('driving', 14 * HOUR, 16 * HOUR),
     ];
-    const { dailyDriving } = computeCounters(
-      sessions,
-      16 * HOUR,
-      14 * HOUR,
-      null,
-    );
+    const { dailyDriving } = computeCounters(sessions, 16 * HOUR, 14 * HOUR);
     expect(dailyDriving).toBe(2 * HOUR);
   });
 
@@ -134,23 +119,13 @@ describe('computeCounters — dailyDriving', () => {
       session('driving', 0, 3 * HOUR),
       session('driving', 20 * HOUR, 22 * HOUR),
     ];
-    const { dailyDriving } = computeCounters(
-      sessions,
-      22 * HOUR,
-      14 * HOUR,
-      null,
-    );
+    const { dailyDriving } = computeCounters(sessions, 22 * HOUR, 14 * HOUR);
     expect(dailyDriving).toBe(2 * HOUR);
   });
 
   it('counts an ongoing driving session up to now', () => {
     const sessions = [session('driving', 14 * HOUR, null)];
-    const { dailyDriving } = computeCounters(
-      sessions,
-      16 * HOUR,
-      14 * HOUR,
-      null,
-    );
+    const { dailyDriving } = computeCounters(sessions, 16 * HOUR, 14 * HOUR);
     expect(dailyDriving).toBe(2 * HOUR);
   });
 });
@@ -171,40 +146,67 @@ describe('computeCounters — weeklyDriving', () => {
       ),
     ];
     const now = new Date(2026, 5, 17, 12, 0, 0).getTime();
-    const { weeklyDriving } = computeCounters(sessions, now, null, null);
+    const { weeklyDriving } = computeCounters(sessions, now, null);
     expect(weeklyDriving).toBe(4 * HOUR);
   });
 
-  it('weekly counter does not reset on calendar week boundary', () => {
-    // Weekly rest ended on Wednesday — counter runs from there, not from Monday.
-    const WED = 3 * 24 * HOUR;
+  it('counts driving on both sides of a weekly rest in the same calendar week', () => {
+    const monday = new Date(2026, 5, 15, 8).getTime();
+    const tuesday = new Date(2026, 5, 16, 8).getTime();
+    const wednesday = new Date(2026, 5, 17, 8).getTime();
     const sessions = [
-      session('driving', 0, 24 * HOUR),
-      session('rest', 24 * HOUR, WED),
-      session('driving', WED, WED + 30 * HOUR),
+      session('driving', monday, monday + 8 * HOUR),
+      session('rest', tuesday, wednesday),
+      session('driving', wednesday, null),
     ];
     const { weeklyDriving } = computeCounters(
       sessions,
-      WED + 30 * HOUR,
-      null,
-      WED,
+      wednesday + 4 * HOUR,
+      wednesday,
     );
-    expect(weeklyDriving).toBe(30 * HOUR);
+    expect(weeklyDriving).toBe(12 * HOUR);
   });
 
-  it('counts only driving after lastWeeklyRestEnd', () => {
-    const sessions = [
-      session('driving', 0, 5 * HOUR),
-      session('driving', 50 * HOUR, 56 * HOUR),
-    ];
-    const { weeklyDriving } = computeCounters(
-      sessions,
-      56 * HOUR,
-      null,
-      48 * HOUR,
+  it('starts a new weekly total at Monday midnight during ongoing driving', () => {
+    const sunday = new Date(2026, 5, 14, 22).getTime();
+    const monday = new Date(2026, 5, 15).getTime();
+    const sessions = [session('driving', sunday, null)];
+    expect(computeCounters(sessions, monday - 1, null).weeklyDriving).toBe(
+      2 * HOUR - 1,
     );
-    expect(weeklyDriving).toBe(6 * HOUR);
+    expect(computeCounters(sessions, monday, null).weeklyDriving).toBe(0);
+    expect(
+      computeCounters(sessions, monday + 2 * HOUR, null).weeklyDriving,
+    ).toBe(2 * HOUR);
   });
+
+  it('clips a closed session at Monday midnight', () => {
+    const monday = new Date(2026, 5, 15).getTime();
+    const sessions = [session('driving', monday - 2 * HOUR, monday + 2 * HOUR)];
+    expect(
+      computeCounters(sessions, monday + 3 * HOUR, null).weeklyDriving,
+    ).toBe(2 * HOUR);
+  });
+
+  it.each([
+    { month: 2, day: 29, hours: 3 },
+    { month: 9, day: 25, hours: 5 },
+  ])(
+    'counts actual elapsed time across the clock change in month $month',
+    ({ month, day, hours }) => {
+      const sessions = [
+        session(
+          'driving',
+          new Date(2026, month, day).getTime(),
+          new Date(2026, month, day, 4).getTime(),
+        ),
+      ];
+      expect(
+        computeCounters(sessions, new Date(2026, month, day, 6).getTime(), null)
+          .weeklyDriving,
+      ).toBe(hours * HOUR);
+    },
+  );
 });
 
 describe('computeCounters — biweeklyDriving', () => {
@@ -233,7 +235,7 @@ describe('computeCounters — biweeklyDriving', () => {
         new Date(2026, 5, 16, 13, 0, 0).getTime(),
       ),
     ];
-    const { biweeklyDriving } = computeCounters(sessions, WED_NOON, null, null);
+    const { biweeklyDriving } = computeCounters(sessions, WED_NOON, null);
     expect(biweeklyDriving).toBe(10 * HOUR);
   });
 
@@ -247,7 +249,7 @@ describe('computeCounters — biweeklyDriving', () => {
         new Date(2026, 5, 3, 17, 0, 0).getTime(),
       ),
     ];
-    const { biweeklyDriving } = computeCounters(sessions, WED_NOON, null, null);
+    const { biweeklyDriving } = computeCounters(sessions, WED_NOON, null);
     expect(biweeklyDriving).toBe(0);
   });
 
@@ -260,7 +262,7 @@ describe('computeCounters — biweeklyDriving', () => {
         new Date(2026, 5, 8, 2, 0, 0).getTime(),
       ),
     ];
-    const { biweeklyDriving } = computeCounters(sessions, WED_NOON, null, null);
+    const { biweeklyDriving } = computeCounters(sessions, WED_NOON, null);
     expect(biweeklyDriving).toBe(2 * HOUR);
   });
 });
