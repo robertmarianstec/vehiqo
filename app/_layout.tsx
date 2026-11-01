@@ -58,11 +58,14 @@ export default function RootLayout() {
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
-        {/* The only screen outside the tabs, so it needs the stack header to
-            give the driver a way back. */}
+        {/* Standalone screens use the stack header for back navigation. */}
         <Stack.Screen
           name="limitations"
           options={{ headerShown: true, title: t('limitations.title') }}
+        />
+        <Stack.Screen
+          name="reports"
+          options={{ headerShown: true, title: t('reports.title') }}
         />
       </Stack>
     </ThemeProvider>

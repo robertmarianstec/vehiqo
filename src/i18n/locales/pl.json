@@ -71,6 +71,23 @@
     "noRestOnRecord": "Dopóki aplikacja nie zapisała pierwszego odpoczynku dziennego, licznik dzienny liczy od północy — jazda sprzed północy może nie być w nim ujęta.",
     "extensionsFromRests": "Liczba wykorzystanych wydłużeń wynika z zapisanych odpoczynków. Jeśli odpoczynek nie został zapisany w aplikacji, może ona uznać wydłużenie za nadal dostępne, choć już nie jest."
   },
+  "reports": {
+    "title": "Raporty czasu pracy",
+    "link": "Raporty",
+    "period": { "week": "Tydzień", "month": "Miesiąc" },
+    "previous": "Poprzedni okres",
+    "next": "Następny okres",
+    "asOf": "Stan na {{date}}",
+    "total": "Suma w wybranym okresie",
+    "days": "Dni",
+    "unrecorded": "Brak danych",
+    "partialDay": "Dane do {{time}}",
+    "dayLength": "Długość dnia: {{time}}",
+    "empty": "Brak zapisanego czasu",
+    "emptyDescription": "W tym okresie nie ma zapisanego czasu żadnej aktywności.",
+    "loadError": "Nie udało się przygotować raportu z zapisanych danych.",
+    "disclaimer": "Zapis własny kierowcy — nie stanowi dowodu w kontroli."
+  },
   "settings": {
     "theme": {
       "loadError": "Nie udało się odczytać ustawienia motywu.",

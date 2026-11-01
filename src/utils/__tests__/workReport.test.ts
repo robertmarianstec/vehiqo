@@ -1,8 +1,63 @@
 import type { WorkMode, WorkSession } from '@/db/types';
-import { getWorkReportDays } from '@/utils/workReport';
+import {
+  getWorkReportDays,
+  getWorkReportRange,
+  getWorkReportTotals,
+  shiftWorkReportPeriod,
+} from '@/utils/workReport';
 
 const HOUR = 3_600_000;
 const MONDAY = new Date(2026, 5, 15).getTime();
+
+it.each([
+  { month: 2, day: 29, fromDay: 23, hours: 167 },
+  { month: 9, day: 25, fromDay: 19, hours: 169 },
+])(
+  'uses calendar weeks across a clock change ($hours hours)',
+  ({ month, day, fromDay, hours }) => {
+    const range = getWorkReportRange(
+      new Date(2026, month, day, 12).getTime(),
+      'week',
+    );
+    expect(range.from).toBe(new Date(2026, month, fromDay).getTime());
+    expect(range.to - range.from).toBe(hours * HOUR);
+    expect(shiftWorkReportPeriod(range.from, 'week', 1)).toBe(range.to);
+  },
+);
+
+it('moves across leap-year months and the year boundary without skipping dates', () => {
+  const january = new Date(2028, 0, 31, 18).getTime();
+  const february = shiftWorkReportPeriod(january, 'month', 1);
+  expect(getWorkReportRange(february, 'month')).toEqual({
+    from: new Date(2028, 1, 1).getTime(),
+    to: new Date(2028, 2, 1).getTime(),
+  });
+  expect(shiftWorkReportPeriod(january, 'month', -1)).toBe(
+    new Date(2027, 11, 1).getTime(),
+  );
+});
+
+it('totals activities and missing time across report rows without changing them', () => {
+  const days = getWorkReportDays(
+    [session('driving', MONDAY + 23 * HOUR, MONDAY + 25 * HOUR)],
+    MONDAY,
+    MONDAY + 48 * HOUR,
+    MONDAY + 48 * HOUR,
+  );
+  const before = JSON.stringify(days);
+  expect(getWorkReportTotals(days)).toEqual({
+    durations: {
+      driving: 2 * HOUR,
+      other_work: 0,
+      standby: 0,
+      break: 0,
+      rest: 0,
+    },
+    unrecorded: 46 * HOUR,
+  });
+  expect(JSON.stringify(days)).toBe(before);
+  expect(getWorkReportTotals([]).unrecorded).toBe(0);
+});
 
 function session(
   mode: WorkMode,

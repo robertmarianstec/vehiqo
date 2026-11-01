@@ -71,6 +71,23 @@
     "noRestOnRecord": "Until the app has recorded your first daily rest, the daily counter starts from midnight — driving before midnight may not be included.",
     "extensionsFromRests": "How many extensions you have used is derived from the rests you record. If a rest was not recorded, the app may treat an extension as still available when it is not."
   },
+  "reports": {
+    "title": "Activity reports",
+    "link": "Reports",
+    "period": { "week": "Week", "month": "Month" },
+    "previous": "Previous period",
+    "next": "Next period",
+    "asOf": "As of {{date}}",
+    "total": "Total for the selected period",
+    "days": "Days",
+    "unrecorded": "No data",
+    "partialDay": "Data until {{time}}",
+    "dayLength": "Day length: {{time}}",
+    "empty": "No recorded time",
+    "emptyDescription": "No activity time has been recorded for this period.",
+    "loadError": "The report could not be prepared from the saved data.",
+    "disclaimer": "Driver's own record — not evidence for an inspection."
+  },
   "settings": {
     "theme": {
       "loadError": "The theme preference could not be loaded.",

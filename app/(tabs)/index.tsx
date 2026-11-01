@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Alert,
   ScrollView,
+  Text as RNText,
   TouchableOpacity,
   useWindowDimensions,
   View,
@@ -172,6 +173,24 @@ export default function TimerScreen() {
           segments={todaySegments}
           bounds={todayBounds}
           compact={compactDetails}
+          headerAction={
+            <Link href="/reports" asChild>
+              <TouchableOpacity
+                accessibilityRole="link"
+                accessibilityLabel={t('reports.title')}
+                className="min-h-11 flex-row items-center justify-center gap-1.5 rounded-lg px-2"
+              >
+                <Icon
+                  name="file-document-outline"
+                  size={20}
+                  className="text-brand"
+                />
+                <RNText className="text-sm font-semibold text-brand">
+                  {t('reports.link')}
+                </RNText>
+              </TouchableOpacity>
+            </Link>
+          }
         />
       </ScrollView>
 

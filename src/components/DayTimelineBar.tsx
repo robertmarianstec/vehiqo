@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
@@ -11,6 +12,7 @@ interface DayTimelineBarProps {
   segments: DaySegment[];
   bounds: DayBounds;
   compact?: boolean;
+  headerAction?: ReactNode;
 }
 
 const HOUR_MARKS = [0, 6, 12, 18, 24];
@@ -19,13 +21,19 @@ export function DayTimelineBar({
   segments,
   bounds,
   compact = false,
+  headerAction,
 }: DayTimelineBarProps) {
   const { t } = useTranslation();
   const dayLengthMs = bounds.dayEnd - bounds.dayStart;
 
   return (
     <Card compact={compact} className={compact ? 'gap-1' : 'gap-2'}>
-      <Text variant="eyebrow">{t('workTimer.dayTimeline.title')}</Text>
+      <View className="flex-row items-center justify-between gap-2">
+        <Text variant="eyebrow" className="shrink">
+          {t('workTimer.dayTimeline.title')}
+        </Text>
+        {headerAction}
+      </View>
 
       {/* Segments are absolutely positioned by percentage (not flex-row) so
           gaps in the data — periods with no logged session — correctly show

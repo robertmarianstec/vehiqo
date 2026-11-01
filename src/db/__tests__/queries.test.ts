@@ -74,6 +74,18 @@ function seed(mode: WorkMode, start: number, end: number | null) {
 }
 
 describe('work session persistence', () => {
+  it('does not expose an uncommitted rest end to a report read', async () => {
+    seed('rest', NOW - 24 * HOUR, null);
+    sqlite.exec(`CREATE TRIGGER reject_driving BEFORE INSERT ON work_sessions
+      WHEN NEW.mode = 'driving' BEGIN SELECT RAISE(ABORT, 'test write failure'); END;`);
+    const change = startWorkSession('driving');
+    await Promise.resolve();
+    await Promise.resolve();
+    const read = getWorkSessionsInRange(NOW - 25 * HOUR, NOW);
+    await Promise.allSettled([change]);
+    expect((await read)[0].ended_at).toBeNull();
+  });
+
   it('finishes queued mode writes before clearing local data', async () => {
     seed('driving', NOW - HOUR, null);
     await Promise.all([startWorkSession('break'), clearAllLocalData()]);

@@ -24,6 +24,13 @@ beforeEach(async () => {
   await i18n.changeLanguage('pl');
 });
 
+it('keeps activity reports outside the app settings', async () => {
+  await render(<SettingsScreen />);
+  expect(
+    screen.queryByRole('link', { name: i18n.t('reports.title') }),
+  ).toBeNull();
+});
+
 it('reports a failed theme save and keeps the previous selection', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   try {

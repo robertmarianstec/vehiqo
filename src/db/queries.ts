@@ -170,6 +170,8 @@ export async function getWorkSessionsInRange(
   to: number,
 ): Promise<WorkSession[]> {
   try {
+    // Reports must not observe a mode change that can still roll back.
+    await pendingWrite;
     const db = await getDatabase();
     return await db.getAllAsync<WorkSession>(
       `SELECT * FROM work_sessions

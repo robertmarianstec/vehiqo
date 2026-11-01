@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react-native';
 import type { PropsWithChildren } from 'react';
 import { Alert } from 'react-native';
@@ -81,6 +82,21 @@ async function renderTimer() {
 }
 
 describe('work timer recovery', () => {
+  it('offers reports in the scrollable details without changing counters or mode controls', async () => {
+    await renderTimer();
+    expect(
+      within(screen.getByTestId('timer-details')).getByRole('link', {
+        name: i18n.t('reports.title'),
+      }),
+    ).toBeOnTheScreen();
+    expect(screen.getAllByRole('button')).toHaveLength(5);
+    expect(
+      screen.getByRole('button', { name: /Jazda/, selected: true }),
+    ).toBeOnTheScreen();
+    expect(screen.getAllByText('04:00')).toHaveLength(4);
+    expect(startWorkSession).not.toHaveBeenCalled();
+  });
+
   it('shows a read error without counters or mode buttons and supports retry', async () => {
     jest
       .mocked(getCurrentWorkSession)
