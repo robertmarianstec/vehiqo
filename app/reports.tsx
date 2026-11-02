@@ -7,6 +7,7 @@ import { FlatList, TouchableOpacity, View } from 'react-native';
 import { Card, ScreenContainer, Text } from '@/components';
 import type { WorkMode } from '@/db/types';
 import { useWorkReport } from '@/hooks/useWorkReport';
+import { useWorkReportPdf } from '@/hooks/useWorkReportPdf';
 import { getDayBounds } from '@/utils/dayTimeline';
 import { formatDuration } from '@/utils/format';
 import { getWorkReportTotals } from '@/utils/workReport';
@@ -62,6 +63,7 @@ export default function ReportsScreen() {
     movePeriod,
     reload,
   } = useWorkReport();
+  const { isExporting, exportReport } = useWorkReportPdf();
   const [openedDay, setOpenedDay] = useState<number | null>(null);
   const totals = useMemo(
     () => getWorkReportTotals(report?.days ?? []),
@@ -93,7 +95,11 @@ export default function ReportsScreen() {
                 <TouchableOpacity
                   key={value}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: period === value }}
+                  accessibilityState={{
+                    selected: period === value,
+                    disabled: isExporting,
+                  }}
+                  disabled={isExporting}
                   className={`min-h-12 flex-1 items-center justify-center rounded-lg p-2 ${period === value ? 'bg-surface-raised' : ''}`}
                   onPress={() => {
                     setOpenedDay(null);
@@ -116,6 +122,8 @@ export default function ReportsScreen() {
               <TouchableOpacity
                 accessibilityRole="button"
                 accessibilityLabel={t('reports.previous')}
+                accessibilityState={{ disabled: isExporting }}
+                disabled={isExporting}
                 onPress={() => {
                   setOpenedDay(null);
                   movePeriod(-1);
@@ -134,8 +142,10 @@ export default function ReportsScreen() {
               <TouchableOpacity
                 accessibilityRole="button"
                 accessibilityLabel={t('reports.next')}
-                accessibilityState={{ disabled: !canMoveForward }}
-                disabled={!canMoveForward}
+                accessibilityState={{
+                  disabled: !canMoveForward || isExporting,
+                }}
+                disabled={!canMoveForward || isExporting}
                 onPress={() => {
                   setOpenedDay(null);
                   movePeriod(1);
@@ -287,8 +297,28 @@ export default function ReportsScreen() {
           );
         }}
       />
-      <View className="border-t border-line px-4 py-3">
+      <View className="gap-3 border-t border-line px-4 py-3">
         <Text variant="timestamp">{t('reports.disclaimer')}</Text>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={t(
+            isExporting ? 'reports.pdf.creating' : 'reports.pdf.create',
+          )}
+          accessibilityState={{
+            disabled: pending || error || !hasRecords || isExporting,
+            busy: isExporting,
+          }}
+          disabled={pending || error || !hasRecords || isExporting}
+          onPress={() => {
+            if (report) void exportReport(report, period);
+          }}
+          className={`min-h-12 flex-row items-center justify-center gap-2 rounded-xl border border-line-control bg-surface-control p-3 ${pending || error || !hasRecords || isExporting ? 'opacity-40' : ''}`}
+        >
+          <Icon name="file-document-outline" size={20} className="text-brand" />
+          <Text className="font-bold text-brand">
+            {t(isExporting ? 'reports.pdf.creating' : 'reports.pdf.create')}
+          </Text>
+        </TouchableOpacity>
       </View>
     </ScreenContainer>
   );

@@ -17,6 +17,12 @@ export interface WorkReportRange {
   to: number;
 }
 
+export interface WorkReportSnapshot {
+  range: WorkReportRange;
+  asOf: number;
+  days: WorkReportDay[];
+}
+
 export function getWorkReportRange(
   anchor: number,
   period: WorkReportPeriod,

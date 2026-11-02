@@ -86,7 +86,21 @@
     "empty": "No recorded time",
     "emptyDescription": "No activity time has been recorded for this period.",
     "loadError": "The report could not be prepared from the saved data.",
-    "disclaimer": "Driver's own record — not evidence for an inspection."
+    "disclaimer": "Driver's own record — not evidence for an inspection.",
+    "pdf": {
+      "create": "Prepare PDF",
+      "creating": "Creating PDF…",
+      "title": "Activity report",
+      "date": "Date",
+      "total": "Total",
+      "generatedAt": "Generated: {{date}}",
+      "timeZone": "Time zone: {{zone}}",
+      "sourceNote": "The vehicle's tachograph and the driver's documentation remain the source of truth.",
+      "durationNote": "Times are shown as hours:minutes. Seconds are omitted in each displayed value.",
+      "missingNote": "No data means time with no recorded mode, not rest.",
+      "unavailable": "PDF sharing is unavailable here. Open the report in the Vehiqo app on Android or iOS.",
+      "error": "The PDF could not be created or shared. Please try again."
+    }
   },
   "settings": {
     "theme": {

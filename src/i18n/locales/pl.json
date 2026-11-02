@@ -86,7 +86,21 @@
     "empty": "Brak zapisanego czasu",
     "emptyDescription": "W tym okresie nie ma zapisanego czasu żadnej aktywności.",
     "loadError": "Nie udało się przygotować raportu z zapisanych danych.",
-    "disclaimer": "Zapis własny kierowcy — nie stanowi dowodu w kontroli."
+    "disclaimer": "Zapis własny kierowcy — nie stanowi dowodu w kontroli.",
+    "pdf": {
+      "create": "Przygotuj PDF",
+      "creating": "Tworzenie PDF…",
+      "title": "Raport aktywności",
+      "date": "Data",
+      "total": "Razem",
+      "generatedAt": "Wygenerowano: {{date}}",
+      "timeZone": "Strefa czasowa: {{zone}}",
+      "sourceNote": "Źródłem prawdy pozostają tachograf pojazdu i dokumentacja kierowcy.",
+      "durationNote": "Czasy podano jako godziny:minuty. Sekundy są pomijane w każdej wyświetlanej wartości.",
+      "missingNote": "Brak danych oznacza czas bez zapisanego trybu, nie odpoczynek.",
+      "unavailable": "Udostępnianie PDF nie jest tutaj dostępne. Otwórz raport w aplikacji Vehiqo na Androidzie lub iOS.",
+      "error": "Nie udało się utworzyć lub udostępnić PDF. Spróbuj ponownie."
+    }
   },
   "settings": {
     "theme": {

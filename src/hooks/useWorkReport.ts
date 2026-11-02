@@ -7,16 +7,9 @@ import {
   getWorkReportDays,
   getWorkReportRange,
   shiftWorkReportPeriod,
-  type WorkReportDay,
   type WorkReportPeriod,
-  type WorkReportRange,
+  type WorkReportSnapshot,
 } from '@/utils/workReport';
-
-export interface WorkReportSnapshot {
-  range: WorkReportRange;
-  asOf: number;
-  days: WorkReportDay[];
-}
 
 export function useWorkReport() {
   const [selection, setSelection] = useState(() => ({
