@@ -42,5 +42,6 @@ yarn-error.*
 /android
 
 # AI
+AGENTS.md
 CLAUDE.md
 PROJECT_STATUS.md
