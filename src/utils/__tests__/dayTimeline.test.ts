@@ -31,6 +31,17 @@ const CLOCK_CHANGE_DAYS = [
 ];
 
 describe('getDaySegments', () => {
+  it('does not draw the future part of a closed activity', () => {
+    expect(
+      getDaySegments(
+        [session('driving', 1200, 1900)],
+        DAY_START,
+        DAY_END,
+        1500,
+      ),
+    ).toEqual([{ mode: 'driving', start: 1200, end: 1500 }]);
+  });
+
   it.each(CLOCK_CHANGE_DAYS)(
     'keeps late-evening driving on the $name day',
     ({ month, day }) => {

@@ -92,6 +92,17 @@ it('splits a continuous activity at midnight without resetting the source record
   expect(JSON.stringify(sessions)).toBe(before);
 });
 
+it('rejects invalid recorded timestamps instead of reporting the time as missing data', () => {
+  expect(() =>
+    getWorkReportDays(
+      [session('driving', Number.NaN, MONDAY + HOUR)],
+      MONDAY,
+      MONDAY + 24 * HOUR,
+      MONDAY + 24 * HOUR,
+    ),
+  ).toThrow();
+});
+
 it('keeps all five activities separate and distinguishes missing data from rest', () => {
   const sessions = [
     session('driving', MONDAY, MONDAY + HOUR),

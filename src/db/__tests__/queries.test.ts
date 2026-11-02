@@ -25,10 +25,12 @@ jest.mock('@/utils/id', () => {
 const HOUR = 3_600_000;
 const NOW = new Date(2026, 5, 17, 12).getTime();
 let sqlite: DatabaseSync;
+let beforeRun: ((sql: string) => Promise<void>) | undefined;
 
 beforeEach(() => {
   jest.useFakeTimers();
   jest.setSystemTime(NOW);
+  beforeRun = undefined;
   sqlite = new DatabaseSync(':memory:');
   sqlite.exec(SCHEMA_SQL);
   // Execute the production SQL against SQLite; only the native bridge is replaced.
@@ -37,8 +39,10 @@ beforeEach(() => {
       sqlite.prepare(sql).get(...params) ?? null,
     getAllAsync: async (sql: string, ...params: SQLInputValue[]) =>
       sqlite.prepare(sql).all(...params),
-    runAsync: async (sql: string, ...params: SQLInputValue[]) =>
-      sqlite.prepare(sql).run(...params),
+    runAsync: async (sql: string, ...params: SQLInputValue[]) => {
+      await beforeRun?.(sql);
+      return sqlite.prepare(sql).run(...params);
+    },
     withTransactionAsync: async (task: () => Promise<void>) => {
       sqlite.exec('BEGIN');
       try {
@@ -73,7 +77,189 @@ function seed(mode: WorkMode, start: number, end: number | null) {
     .run(`${mode}-${start}`, mode, start, end, start, end ?? start);
 }
 
+describe('work timer rest metadata', () => {
+  it.each([
+    '',
+    ' ',
+    'invalid',
+    'NaN',
+    'Infinity',
+    '-1',
+    '1.5',
+    '1e3',
+    String(NOW + 1),
+    String(Number.MAX_SAFE_INTEGER + 1),
+  ])(
+    'rejects invalid or future daily and weekly rest timestamps %j',
+    async (value) => {
+      for (const key of ['last_daily_rest_end', 'last_weekly_rest_end']) {
+        sqlite
+          .prepare(
+            'INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)',
+          )
+          .run(key, value, NOW);
+        await expect(getWorkTimerSettings()).rejects.toThrow();
+        sqlite.prepare('DELETE FROM app_settings WHERE key = ?').run(key);
+      }
+    },
+  );
+
+  it('accepts zero and current timestamps without treating zero as missing', async () => {
+    sqlite
+      .prepare(
+        "INSERT INTO app_settings (key, value, updated_at) VALUES ('last_daily_rest_end', '0', ?)",
+      )
+      .run(NOW);
+    sqlite
+      .prepare(
+        "INSERT INTO app_settings (key, value, updated_at) VALUES ('last_weekly_rest_end', ?, ?)",
+      )
+      .run(String(NOW), NOW);
+    expect(await getWorkTimerSettings()).toEqual({
+      lastDailyRestEnd: 0,
+      lastWeeklyRestEnd: NOW,
+    });
+  });
+});
+
 describe('work session persistence', () => {
+  it.each(['driving', 'rest'] as const)(
+    'rejects a %s selection before the active session start without changing history',
+    async (mode) => {
+      seed('rest', NOW, null);
+      jest.setSystemTime(NOW - 1);
+      await expect(startWorkSession(mode)).rejects.toThrow();
+      expect(
+        sqlite
+          .prepare('SELECT mode, started_at, ended_at FROM work_sessions')
+          .all(),
+      ).toEqual([{ mode: 'rest', started_at: NOW, ended_at: null }]);
+      jest.setSystemTime(NOW);
+      await expect(startWorkSession('driving')).resolves.toMatchObject({
+        mode: 'driving',
+        started_at: NOW,
+      });
+    },
+  );
+
+  it('rejects a new session before the last closed endpoint when no session is active', async () => {
+    seed('driving', NOW - HOUR, NOW);
+    jest.setSystemTime(NOW - 1);
+    await expect(startWorkSession('other_work')).rejects.toThrow();
+    expect(await getCurrentWorkSession()).toBeNull();
+    expect(
+      sqlite.prepare('SELECT COUNT(*) AS count FROM work_sessions').get(),
+    ).toEqual({ count: 1 });
+  });
+
+  it('allows a new session exactly at the last closed endpoint', async () => {
+    seed('driving', NOW - HOUR, NOW);
+    await expect(startWorkSession('other_work')).resolves.toMatchObject({
+      mode: 'other_work',
+      started_at: NOW,
+    });
+  });
+
+  it('checks queued press times against the history committed ahead of them', async () => {
+    seed('driving', NOW - HOUR, null);
+    const first = startWorkSession('break');
+    jest.setSystemTime(NOW - 1);
+    const second = startWorkSession('other_work');
+    const results = await Promise.allSettled([first, second]);
+    expect(results.map((result) => result.status)).toEqual([
+      'fulfilled',
+      'rejected',
+    ]);
+    expect((await getCurrentWorkSession())?.mode).toBe('break');
+    expect(
+      sqlite
+        .prepare(
+          'SELECT mode, started_at, ended_at FROM work_sessions ORDER BY rowid',
+        )
+        .all(),
+    ).toEqual([
+      { mode: 'driving', started_at: NOW - HOUR, ended_at: NOW },
+      { mode: 'break', started_at: NOW, ended_at: null },
+    ]);
+  });
+
+  it.each([NaN, Infinity, -1, 1.5])(
+    'rejects an invalid press timestamp %s before writing',
+    async (time) => {
+      jest.spyOn(Date, 'now').mockReturnValue(time);
+      await expect(startWorkSession('driving')).rejects.toThrow();
+      expect(
+        sqlite.prepare('SELECT COUNT(*) AS count FROM work_sessions').get(),
+      ).toEqual({ count: 0 });
+    },
+  );
+
+  it.each([false, true])(
+    'reads current mode and rest settings only after a pending write settles (rollback: %s)',
+    async (rollback) => {
+      seed('rest', NOW - 24 * HOUR, null);
+      if (rollback) {
+        sqlite.exec(`CREATE TRIGGER reject_driving BEFORE INSERT ON work_sessions
+          WHEN NEW.mode = 'driving' BEGIN SELECT RAISE(ABORT, 'test write failure'); END;`);
+      }
+      let release!: () => void;
+      let reached!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const entered = new Promise<void>((resolve) => {
+        reached = resolve;
+      });
+      beforeRun = async (sql) => {
+        if (sql.includes('INSERT INTO work_sessions')) {
+          reached();
+          await gate;
+        }
+      };
+      const change = startWorkSession('driving');
+      const settled = Promise.allSettled([change]);
+      await entered;
+      let readsSettled = false;
+      const reads = Promise.all([
+        getCurrentWorkSession(),
+        getWorkSessionsInRange(NOW - 25 * HOUR, NOW + 1),
+        getWorkTimerSettings(),
+      ]).then((snapshot) => {
+        readsSettled = true;
+        return snapshot;
+      });
+      // Give each query time to reach SQLite while the transaction is paused.
+      for (let tick = 0; tick < 10; tick += 1) await Promise.resolve();
+      const settledBeforeCommit = readsSettled;
+      release();
+      await settled;
+      const [current, history, settings] = await reads;
+      expect(settledBeforeCommit).toBe(false);
+      expect(current?.mode).toBe(rollback ? 'rest' : 'driving');
+      expect(history.filter((session) => session.ended_at === null)).toEqual([
+        current,
+      ]);
+      expect(settings).toEqual({
+        lastDailyRestEnd: rollback ? null : NOW,
+        lastWeeklyRestEnd: rollback ? null : NOW,
+      });
+    },
+  );
+
+  it('reads a theme only after an already requested save finishes', async () => {
+    const save = setThemePreference('dark');
+    const read = getThemePreference();
+    await save;
+    expect(await read).toBe('dark');
+  });
+
+  it('keeps the operation queue usable after a read fails', async () => {
+    jest.mocked(getDatabase).mockRejectedValueOnce(new Error('read failed'));
+    await expect(getWorkTimerSettings()).rejects.toThrow('read failed');
+    await startWorkSession('driving');
+    expect((await getCurrentWorkSession())?.mode).toBe('driving');
+  });
+
   it('does not expose an uncommitted rest end to a report read', async () => {
     seed('rest', NOW - 24 * HOUR, null);
     sqlite.exec(`CREATE TRIGGER reject_driving BEFORE INSERT ON work_sessions

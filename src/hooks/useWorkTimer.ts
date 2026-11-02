@@ -5,7 +5,7 @@ import {
   BREAK_PRE_ALERT_BEFORE_LIMIT_MS,
   DRIVING_BEFORE_BREAK_MS,
   MAX_BIWEEKLY_DRIVING_MS,
-  MAX_DAILY_DRIVING_REGULAR_MS,
+  MAX_DAILY_DRIVING_EXTENDED_MS,
   MAX_WEEKLY_DRIVING_MS,
 } from '@/constants/euRegulations';
 import {
@@ -23,6 +23,7 @@ import {
   getDaySegments,
   getWeekStart,
 } from '@/utils/dayTimeline';
+import { assertValidWorkSessions } from '@/utils/workSessionValidation';
 import {
   countExtensionsUsedThisWeek,
   getCurrentDailyDrivingStart,
@@ -35,6 +36,10 @@ import {
   type CounterPercents,
   type TimerAlert,
 } from '@/utils/workTimerAlerts';
+import {
+  hasContinuousCoverage,
+  hasKnownExtensionHistory,
+} from '@/utils/workTimerCoverage';
 
 const HOUR_MS = 60 * 60 * 1000;
 const TWO_WEEKS_MS = 14 * 24 * HOUR_MS;
@@ -65,13 +70,15 @@ export interface UseWorkTimerReturn {
   retryLoad: () => void;
   todayBounds: DayBounds;
   todaySegments: DaySegment[];
+  dailyDrivingComplete: boolean;
+  dailyExtensionsKnown: boolean;
   /**
    * The limit the daily counter is measured against. Stays at the regular 9h —
    * showing 10h up front would present the exception as the norm — and only
    * rises to 10h once driving has actually passed 9h on an available
    * extension, so the bar stops reading as a violation the driver isn't in.
    */
-  dailyDrivingLimit: number;
+  dailyDrivingLimit: number | null;
   switchMode: (mode: WorkMode) => Promise<void>;
 }
 
@@ -80,11 +87,12 @@ export function computeCounters(
   now: number,
   lastDailyRestEnd: number | null,
 ): WorkTimerCounters {
-  const dailyStart = getCurrentDailyDrivingStart(
-    sessions,
-    now,
-    lastDailyRestEnd,
-  );
+  const dailyStart =
+    getCurrentDailyDrivingStart(sessions, now, lastDailyRestEnd) ??
+    sessions.reduce(
+      (start, session) => Math.min(start, session.started_at),
+      now,
+    );
   // EU 561/2006 art. 4(i), 6(2): weekly rest does not reset a calendar week.
   const weeklyStart = getWeekStart(now);
   // EU art. 6(3): max 90h across two consecutive calendar weeks — the current
@@ -131,14 +139,18 @@ function computeWarnings(
 // alert always shows the true value at that moment (e.g. 93%), not the
 // nominal threshold that triggered it (drivers cross 75/90/100% between
 // 30-second ticks, never exactly on the line).
-function computePercents(counters: WorkTimerCounters): CounterPercents {
+function computePercents(
+  counters: WorkTimerCounters,
+  dailyLimit: number | null,
+): CounterPercents {
   return {
     drivingSinceBreak: Math.round(
       (counters.drivingSinceBreak / DRIVING_BEFORE_BREAK_MS) * 100,
     ),
-    dailyDriving: Math.round(
-      (counters.dailyDriving / MAX_DAILY_DRIVING_REGULAR_MS) * 100,
-    ),
+    dailyDriving:
+      dailyLimit === null
+        ? 0
+        : Math.round((counters.dailyDriving / dailyLimit) * 100),
     weeklyDriving: Math.round(
       (counters.weeklyDriving / MAX_WEEKLY_DRIVING_MS) * 100,
     ),
@@ -163,24 +175,26 @@ export function useWorkTimer(): UseWorkTimerReturn {
       setIsLoading(true);
       setLoadError(false);
       try {
+        const settings = await getWorkTimerSettings();
         const loadTime = Date.now();
         // The autumn clock change can make two calendar weeks exceed 14x24h.
         const lookbackStart = Math.min(
           loadTime - TWO_WEEKS_MS,
           getWeekStart(getWeekStart(loadTime) - 1),
+          settings.lastDailyRestEnd ?? 0,
         );
-        const [current, historical, settings] = await Promise.all([
+        const [current, historical] = await Promise.all([
           getCurrentWorkSession(),
           getWorkSessionsInRange(lookbackStart, loadTime),
-          getWorkTimerSettings(),
         ]);
         if (cancelled) return;
-        setCurrentMode(current?.mode ?? null);
-        setSessions(
+        const loaded =
           current && !historical.some((session) => session.id === current.id)
             ? [...historical, current]
-            : historical,
-        );
+            : historical;
+        assertValidWorkSessions(loaded);
+        setCurrentMode(current?.mode ?? null);
+        setSessions(loaded);
         setLastDailyRestEnd(settings.lastDailyRestEnd);
         setNow(Date.now());
       } catch {
@@ -221,14 +235,35 @@ export function useWorkTimer(): UseWorkTimerReturn {
     () => computeCounters(sessions, now, lastDailyRestEnd),
     [sessions, now, lastDailyRestEnd],
   );
+  const clockInvalid =
+    (lastDailyRestEnd !== null && lastDailyRestEnd > now) ||
+    sessions.some(
+      (session) =>
+        session.started_at > now ||
+        (session.ended_at !== null && session.ended_at > now),
+    );
+  const currentPeriodStart = useMemo(
+    () => getCurrentDailyDrivingStart(sessions, now, lastDailyRestEnd),
+    [sessions, now, lastDailyRestEnd],
+  );
+  const dailyDrivingComplete =
+    currentPeriodStart !== null &&
+    hasContinuousCoverage(sessions, currentPeriodStart, now);
+  const dailyExtensionsKnown = hasKnownExtensionHistory(
+    sessions,
+    getWeekStart(now),
+    currentPeriodStart,
+    now,
+  );
   // The current daily period is what the driver is deciding about, so the
   // extensions already spent are counted from the periods that closed before it.
   const dailyStatus = useMemo(() => {
-    const currentPeriodStart = getCurrentDailyDrivingStart(
-      sessions,
-      now,
-      lastDailyRestEnd,
-    );
+    if (
+      !dailyDrivingComplete ||
+      !dailyExtensionsKnown ||
+      currentPeriodStart === null
+    )
+      return null;
     const used = countExtensionsUsedThisWeek(
       sessions,
       getWeekStart(now),
@@ -236,13 +271,31 @@ export function useWorkTimer(): UseWorkTimerReturn {
       now,
     );
     return getDailyDrivingStatus(counters.dailyDriving, used);
-  }, [sessions, counters.dailyDriving, lastDailyRestEnd, now]);
+  }, [
+    sessions,
+    counters.dailyDriving,
+    dailyDrivingComplete,
+    dailyExtensionsKnown,
+    currentPeriodStart,
+    now,
+  ]);
+
+  const dailyLimit = dailyStatus?.limit ?? null;
+  const dailyLevel = dailyDrivingComplete
+    ? (dailyStatus?.level ??
+      (counters.dailyDriving >= MAX_DAILY_DRIVING_EXTENDED_MS
+        ? 'danger'
+        : null))
+    : null;
 
   const warnings = useMemo(
-    () => computeWarnings(counters, dailyStatus.level),
-    [counters, dailyStatus.level],
+    () => computeWarnings(counters, dailyLevel),
+    [counters, dailyLevel],
   );
-  const percents = useMemo(() => computePercents(counters), [counters]);
+  const percents = useMemo(
+    () => computePercents(counters, dailyLimit),
+    [counters, dailyLimit],
+  );
 
   // While already on a break or rest, drivingSinceBreak is frozen (not yet
   // reset — see getDrivingSinceLastBreak) rather than accumulating, so the
@@ -250,16 +303,38 @@ export function useWorkTimer(): UseWorkTimerReturn {
   const isBreakDueSoon =
     currentMode !== 'break' &&
     currentMode !== 'rest' &&
+    counters.drivingSinceBreak < DRIVING_BEFORE_BREAK_MS &&
     counters.drivingSinceBreak >=
       DRIVING_BEFORE_BREAK_MS - BREAK_PRE_ALERT_BEFORE_LIMIT_MS;
 
   const alerts = useMemo(
     () =>
-      buildTimerAlerts(warnings, percents, isBreakDueSoon, currentMode, {
-        inUse: dailyStatus.extensionInUse,
-        used: dailyStatus.extensionsUsed,
-      }),
-    [warnings, percents, isBreakDueSoon, currentMode, dailyStatus],
+      loadError || clockInvalid
+        ? []
+        : buildTimerAlerts(
+            warnings,
+            percents,
+            isBreakDueSoon
+              ? DRIVING_BEFORE_BREAK_MS - counters.drivingSinceBreak
+              : null,
+            currentMode,
+            {
+              inUse: dailyStatus?.extensionInUse ?? false,
+              used: dailyStatus?.extensionsUsed ?? 0,
+              historyKnown: dailyExtensionsKnown,
+            },
+          ),
+    [
+      warnings,
+      percents,
+      isBreakDueSoon,
+      currentMode,
+      dailyStatus,
+      counters.drivingSinceBreak,
+      dailyExtensionsKnown,
+      loadError,
+      clockInvalid,
+    ],
   );
 
   const todayBounds = useMemo(() => getDayBounds(now), [now]);
@@ -297,11 +372,13 @@ export function useWorkTimer(): UseWorkTimerReturn {
     alerts,
     isBreakDueSoon,
     isLoading,
-    loadError,
+    loadError: loadError || clockInvalid,
     retryLoad,
     todayBounds,
     todaySegments,
-    dailyDrivingLimit: dailyStatus.limit,
+    dailyDrivingComplete,
+    dailyExtensionsKnown,
+    dailyDrivingLimit: dailyLimit,
     switchMode,
   };
 }

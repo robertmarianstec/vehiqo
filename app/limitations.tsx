@@ -5,6 +5,8 @@ import { Card, ScreenContainer, Text } from '@/components';
 
 const NOT_TRACKED_KEYS = [
   'limitations.reducedRests',
+  'limitations.dailyRestWindow',
+  'limitations.weeklyRestDeadline',
   'limitations.weeklyCompensation',
   'limitations.multiManning',
   'limitations.ferry',

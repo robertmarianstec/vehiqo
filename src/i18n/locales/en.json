@@ -20,8 +20,11 @@
       "rest": "Rest"
     },
     "counters": {
-      "sinceBreak": "Since break",
+      "sinceBreak": "Driving since break",
       "daily": "Day",
+      "dailyRecorded": "Recorded driving",
+      "dailyIncomplete": "Incomplete period data",
+      "extensionsUnknown": "Base {{limit}} · incomplete extension history",
       "weekly": "Week",
       "biweekly": "2 weeks"
     },
@@ -30,10 +33,10 @@
     },
     "currentMode": "Current mode",
     "noMode": "No mode selected",
-    "breakRemaining": "To the limit: {{time}}",
+    "breakRemaining": "To the driving limit: {{time}}",
     "breakRequired": "Limit reached",
     "warnings": {
-      "breakDueSoon": "30 min to the limit",
+      "breakDueSoon": "To the break limit: {{time}}",
       "drivingSinceBreak": {
         "info": "Driving {{percent}}% of break interval",
         "warning": "Break limit almost reached ({{percent}}%)",
@@ -43,7 +46,8 @@
         "info": "{{percent}}% of daily driving limit",
         "warning": "Daily driving limit almost reached ({{percent}}%)",
         "danger": "Daily driving limit reached ({{percent}}%)",
-        "extensionInUse": "Past the basic limit — extension in use ({{used}} of 2)"
+        "extensionInUse": "Past the basic limit — extension in use ({{used}} of 2)",
+        "maximumReachedUnknownHistory": "Recorded driving in the period has reached 10:00 · extension history is incomplete"
       },
       "weeklyDriving": {
         "info": "{{percent}}% of weekly driving limit",
@@ -63,13 +67,15 @@
     "intro": "Vehiqo shows measured time next to the value set by the regulation. It does not judge whether you are compliant. The vehicle's tachograph and your own records remain the source of truth.",
     "listTitle": "The counters do not account for:",
     "reducedRests": "How many reduced daily rests you have used — the regulation allows three between weekly rests.",
+    "dailyRestWindow": "Completion of a daily rest within 24 hours of the end of the previous daily or weekly rest.",
+    "weeklyRestDeadline": "Start of a weekly rest within six 24-hour periods after the end of the previous weekly rest.",
     "weeklyCompensation": "Compensating a reduced weekly rest.",
     "multiManning": "Multi-manning — different rules apply with two drivers.",
     "ferry": "Interrupting a rest on a ferry or train.",
     "assumptionsTitle": "Assumptions made:",
     "straddlingWeek": "A driving period crossing Sunday midnight is counted in the week it started. The regulation does not settle this case.",
-    "noRestOnRecord": "Until the app has recorded your first daily rest, the daily counter starts from midnight — driving before midnight may not be included.",
-    "extensionsFromRests": "How many extensions you have used is derived from the rests you record. If a rest was not recorded, the app may treat an extension as still available when it is not."
+    "noRestOnRecord": "When the daily period start is unknown or records contain gaps, Recorded driving shows the driving recorded in that incomplete history. Midnight does not reset this sum. It is not a complete daily driving total, so the app does not compare it with a daily limit.",
+    "extensionsFromRests": "Extensions used are counted from recorded rests and continuous weekly history. With incomplete history, the app does not determine extension availability or show the daily limit bar. When the daily period itself is complete, it reports reaching 10:00 of recorded driving without assessing legal compliance."
   },
   "reports": {
     "title": "Activity reports",

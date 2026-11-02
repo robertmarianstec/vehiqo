@@ -34,7 +34,11 @@ function buildWebDemoDrivingSession(): WorkSession | null {
   };
 }
 
-export async function getCurrentWorkSession(): Promise<WorkSession | null> {
+export function getCurrentWorkSession(): Promise<WorkSession | null> {
+  return queueOperation(readCurrentWorkSession);
+}
+
+async function readCurrentWorkSession(): Promise<WorkSession | null> {
   try {
     const db = await getDatabase();
     const row = await db.getFirstAsync<WorkSession>(
@@ -50,24 +54,34 @@ export async function getCurrentWorkSession(): Promise<WorkSession | null> {
   }
 }
 
-// Writes on this connection must not enter another operation's transaction.
-let pendingWrite: Promise<unknown> = Promise.resolve();
+// Reads and writes share a connection: reads must not observe a transaction
+// that can still roll back, and writes must not enter another transaction.
+let pendingOperation: Promise<unknown> = Promise.resolve();
 
-function queueWrite<T>(write: () => Promise<T>): Promise<T> {
-  const next = pendingWrite.then(write);
-  pendingWrite = next.catch(() => undefined);
+function queueOperation<T>(operation: () => Promise<T>): Promise<T> {
+  const next = pendingOperation.then(operation);
+  pendingOperation = next.catch(() => undefined);
   return next;
+}
+
+function isTimestamp(value: number): boolean {
+  return (
+    Number.isSafeInteger(value) &&
+    value >= 0 &&
+    Number.isFinite(new Date(value).getTime())
+  );
 }
 
 export function startWorkSession(mode: WorkMode): Promise<WorkSession> {
   const now = Date.now();
-  return queueWrite(() => createWorkSession(mode, now));
+  return queueOperation(() => createWorkSession(mode, now));
 }
 
 async function createWorkSession(
   mode: WorkMode,
   now: number,
 ): Promise<WorkSession> {
+  if (!isTimestamp(now)) throw new RangeError('Invalid work session timestamp');
   const id = generateId();
 
   let db: Awaited<ReturnType<typeof getDatabase>>;
@@ -92,6 +106,23 @@ async function createWorkSession(
 
   let existing: WorkSession | null = null;
   await db.withTransactionAsync(async () => {
+    // A clock correction must not create negative or overlapping intervals.
+    const latest = await db.getFirstAsync<{
+      latest_start: number | null;
+      latest_end: number | null;
+    }>(
+      `SELECT MAX(started_at) AS latest_start, MAX(ended_at) AS latest_end
+       FROM work_sessions;`,
+    );
+    for (const boundary of [latest?.latest_start, latest?.latest_end]) {
+      if (
+        boundary !== null &&
+        boundary !== undefined &&
+        (!isTimestamp(boundary) || now < boundary)
+      ) {
+        throw new RangeError('Work session time precedes recorded history');
+      }
+    }
     const prev = await db.getFirstAsync<WorkSession>(
       `SELECT * FROM work_sessions
        WHERE ended_at IS NULL
@@ -165,13 +196,18 @@ async function createWorkSession(
   );
 }
 
-export async function getWorkSessionsInRange(
+export function getWorkSessionsInRange(
+  from: number,
+  to: number,
+): Promise<WorkSession[]> {
+  return queueOperation(() => readWorkSessionsInRange(from, to));
+}
+
+async function readWorkSessionsInRange(
   from: number,
   to: number,
 ): Promise<WorkSession[]> {
   try {
-    // Reports must not observe a mode change that can still roll back.
-    await pendingWrite;
     const db = await getDatabase();
     return await db.getAllAsync<WorkSession>(
       `SELECT * FROM work_sessions
@@ -196,7 +232,7 @@ export async function getWorkSessionsInRange(
 // longer exists, breaking every query until a full app restart. Children are
 // cleared before parents so the order never depends on ON DELETE CASCADE.
 export function clearAllLocalData(): Promise<void> {
-  return queueWrite(clearLocalData);
+  return queueOperation(clearLocalData);
 }
 
 async function clearLocalData(): Promise<void> {
@@ -218,7 +254,11 @@ function isThemePreference(
   return value === 'system' || value === 'light' || value === 'dark';
 }
 
-export async function getThemePreference(): Promise<ThemePreference> {
+export function getThemePreference(): Promise<ThemePreference> {
+  return queueOperation(readThemePreference);
+}
+
+async function readThemePreference(): Promise<ThemePreference> {
   try {
     const db = await getDatabase();
     const row = await db.getFirstAsync<{ value: string }>(
@@ -233,7 +273,7 @@ export async function getThemePreference(): Promise<ThemePreference> {
 }
 
 export function setThemePreference(preference: ThemePreference): Promise<void> {
-  return queueWrite(() => persistThemePreference(preference));
+  return queueOperation(() => persistThemePreference(preference));
 }
 
 async function persistThemePreference(
@@ -259,7 +299,11 @@ export interface WorkTimerSettings {
   lastWeeklyRestEnd: number | null;
 }
 
-export async function getWorkTimerSettings(): Promise<WorkTimerSettings> {
+export function getWorkTimerSettings(): Promise<WorkTimerSettings> {
+  return queueOperation(readWorkTimerSettings);
+}
+
+async function readWorkTimerSettings(): Promise<WorkTimerSettings> {
   try {
     const db = await getDatabase();
     const rows = await db.getAllAsync<{ key: string; value: string }>(
@@ -267,9 +311,20 @@ export async function getWorkTimerSettings(): Promise<WorkTimerSettings> {
        WHERE key IN ('last_daily_rest_end', 'last_weekly_rest_end');`,
     );
 
+    const now = Date.now();
     const readTimestamp = (key: string): number | null => {
       const row = rows.find((r) => r.key === key);
-      return row ? Number(row.value) : null;
+      if (!row) return null;
+      const timestamp = Number(row.value);
+      if (
+        !/^\d+$/.test(row.value) ||
+        !isTimestamp(timestamp) ||
+        !isTimestamp(now) ||
+        timestamp > now
+      ) {
+        throw new RangeError('Invalid recorded rest timestamp');
+      }
+      return timestamp;
     };
 
     return {

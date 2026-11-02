@@ -1,3 +1,4 @@
+import { BREAK_PRE_ALERT_BEFORE_LIMIT_MS } from '@/constants/euRegulations';
 import type { WorkMode } from '@/db/types';
 import type { WarningLevel } from '@/utils/compliance';
 
@@ -24,16 +25,16 @@ export type TimerAlertId = 'breakDueSoon' | CounterAlertId;
 type MessageKey =
   | 'workTimer.warnings.breakDueSoon'
   | 'workTimer.warnings.dailyDriving.extensionInUse'
+  | 'workTimer.warnings.dailyDriving.maximumReachedUnknownHistory'
   | `workTimer.warnings.${CounterAlertId}.${WarningLevel}`;
 
 export interface TimerAlert {
   id: TimerAlertId;
   severity: AlertSeverity;
   messageKey: MessageKey;
-  // Live percentage of the limit reached, shown in the message for the four
-  // counter-based alerts. breakDueSoon has no percent — it's a fixed 30-minute
-  // pre-alert, not a threshold-based one.
+  // Live percentage of the limit reached for the four counter-based alerts.
   percent?: number;
+  remainingMs?: number;
   /** How many of the week's two 10h extensions are spent, including this one. */
   used?: number;
 }
@@ -41,6 +42,7 @@ export interface TimerAlert {
 export interface DailyExtensionState {
   inUse: boolean;
   used: number;
+  historyKnown?: boolean;
 }
 
 const COUNTER_ORDER: CounterAlertId[] = [
@@ -56,29 +58,31 @@ const SEVERITY_RANK: Record<AlertSeverity, number> = {
   info: 2,
 };
 
-// The "break due soon" pre-alert is dropped once driving-since-break hits the
-// 100% level: the break is no longer "soon" but mandatory now, so the danger
-// message for that counter replaces it instead of showing both.
+// At the break limit, the reached-limit message replaces the countdown.
 export function buildTimerAlerts(
   warnings: CounterWarnings,
   percents: CounterPercents,
-  isBreakDueSoon: boolean,
+  breakRemainingMs: number | null,
   currentMode: WorkMode | null,
   dailyExtension: DailyExtensionState = { inUse: false, used: 0 },
 ): TimerAlert[] {
   const alerts: TimerAlert[] = [];
-  // A driver already on a break or rest is actively complying with the
-  // driving-since-break limit. That counter only resets once the break/rest
-  // qualifies (see getDrivingSinceLastBreak) — before then it stays frozen at
-  // its pre-break value, which would otherwise read as "take a break soon"
-  // while the driver is already taking one.
+  // The counter stays frozen until the break/rest reaches its duration threshold.
+  // Suppress its alerts during recovery rather than implying continued driving.
   const onQualifyingBreak = currentMode === 'break' || currentMode === 'rest';
 
-  if (isBreakDueSoon && warnings.drivingSinceBreak !== 'danger') {
+  if (
+    !onQualifyingBreak &&
+    breakRemainingMs !== null &&
+    breakRemainingMs > 0 &&
+    breakRemainingMs <= BREAK_PRE_ALERT_BEFORE_LIMIT_MS &&
+    warnings.drivingSinceBreak !== 'danger'
+  ) {
     alerts.push({
       id: 'breakDueSoon',
       severity: 'warning',
       messageKey: 'workTimer.warnings.breakDueSoon',
+      remainingMs: breakRemainingMs,
     });
   }
 
@@ -87,8 +91,19 @@ export function buildTimerAlerts(
     const level = warnings[id];
     if (level === null) continue;
 
-    // Past 9h on an extension the driver still had, the plain "limit reached"
-    // wording would misstate a legal drive as a violation.
+    if (id === 'dailyDriving' && dailyExtension.historyKnown === false) {
+      if (level === 'danger') {
+        alerts.push({
+          id,
+          severity: level,
+          messageKey:
+            'workTimer.warnings.dailyDriving.maximumReachedUnknownHistory',
+        });
+      }
+      continue;
+    }
+
+    // Between the basic and extended thresholds, report the extension in use.
     if (id === 'dailyDriving' && dailyExtension.inUse) {
       alerts.push({
         id,

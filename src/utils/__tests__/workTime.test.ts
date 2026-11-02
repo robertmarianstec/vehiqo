@@ -1,6 +1,7 @@
 import type { WorkMode, WorkSession } from '@/db/types';
 import {
   countExtensionsUsedThisWeek,
+  getCurrentDailyDrivingStart,
   getDailyDrivingPeriods,
   getDailyDrivingStatus,
   getDrivingSinceLastBreak,
@@ -26,6 +27,108 @@ function session(
 
 const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
+
+describe('recorded daily boundaries', () => {
+  it('does not treat the end of recorded driving as a daily rest end', () => {
+    expect(
+      getCurrentDailyDrivingStart(
+        [session('driving', 0, 2 * HOUR)],
+        3 * HOUR,
+        2 * HOUR,
+      ),
+    ).toBeNull();
+  });
+
+  it('does not trust a marker at the end of a recorded short rest', () => {
+    expect(
+      getCurrentDailyDrivingStart(
+        [session('driving', 0, HOUR), session('rest', HOUR, 2 * HOUR)],
+        3 * HOUR,
+        2 * HOUR,
+      ),
+    ).toBeNull();
+  });
+
+  it('does not trust a rest marker inside a recorded drive', () => {
+    expect(
+      getCurrentDailyDrivingStart(
+        [session('driving', 0, null)],
+        2 * HOUR,
+        HOUR,
+      ),
+    ).toBeNull();
+  });
+
+  it('uses a known rest from history when a newer marker contradicts the following drive', () => {
+    expect(
+      getCurrentDailyDrivingStart(
+        [session('rest', 0, 9 * HOUR), session('driving', 9 * HOUR, null)],
+        11 * HOUR,
+        10 * HOUR,
+      ),
+    ).toBe(9 * HOUR);
+  });
+
+  it('does not reset inside a continuous ongoing rest at a record boundary', () => {
+    const records = [
+      session('rest', 0, 9 * HOUR),
+      session('driving', 9 * HOUR, 10 * HOUR),
+      session('rest', 10 * HOUR, 19 * HOUR),
+      session('rest', 19 * HOUR, null),
+    ];
+    expect(getCurrentDailyDrivingStart(records, 22 * HOUR, 19 * HOUR)).toBe(
+      9 * HOUR,
+    );
+  });
+});
+
+describe('elapsed time boundaries', () => {
+  it('counts only the elapsed part of a closed driving record', () => {
+    expect(
+      getDrivingSinceLastBreak([session('driving', 0, 2 * HOUR)], HOUR),
+    ).toBe(HOUR);
+  });
+
+  it('does not subtract an ongoing future drive from recorded driving', () => {
+    expect(
+      getDrivingSinceLastBreak(
+        [session('driving', 0, HOUR), session('driving', 3 * HOUR, null)],
+        2 * HOUR,
+      ),
+    ).toBe(HOUR);
+  });
+
+  it('does not complete a break using time that has not elapsed', () => {
+    expect(
+      getDrivingSinceLastBreak(
+        [
+          session('driving', 0, 4.5 * HOUR),
+          session('break', 4.5 * HOUR, 5.25 * HOUR),
+        ],
+        5 * HOUR,
+      ),
+    ).toBe(4.5 * HOUR);
+  });
+
+  it('does not use a future rest to open a daily driving period', () => {
+    expect(
+      getDailyDrivingPeriods([session('rest', 0, 11 * HOUR)], 10 * HOUR),
+    ).toEqual([]);
+  });
+
+  it('does not qualify a rest using time that has not elapsed', () => {
+    expect(
+      getLastRestPeriodEnd([session('rest', 0, 11 * HOUR)], 9 * HOUR, 8 * HOUR),
+    ).toBeNull();
+    expect(
+      getLastRestPeriodEnd(
+        [session('rest', 0, 11 * HOUR)],
+        9 * HOUR,
+        10 * HOUR,
+      ),
+    ).toBe(10 * HOUR);
+  });
+});
 
 describe('sumModeTimeInRange', () => {
   const FROM = 100;
@@ -632,6 +735,18 @@ describe('getDailyDrivingStatus', () => {
   it('reports danger exactly at the regular limit when no extension is left', () => {
     expect(getDailyDrivingStatus(9 * HOUR, 2).level).toBe('danger');
   });
+
+  it.each([0, 1])(
+    'reports the extended limit reached at exactly 10h with %s past extensions',
+    (used) => {
+      expect(getDailyDrivingStatus(10 * HOUR, used)).toEqual({
+        level: 'danger',
+        extensionInUse: false,
+        extensionsUsed: used + 1,
+        limit: 10 * HOUR,
+      });
+    },
+  );
 
   it('warns rather than alarms past 9h while an extension remains', () => {
     const status = getDailyDrivingStatus(9.5 * HOUR, 1);

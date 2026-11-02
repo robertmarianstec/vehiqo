@@ -113,7 +113,7 @@ describe('computeCounters — dailyDriving', () => {
     );
   });
 
-  it('falls back to the start of the calendar day, not the epoch', () => {
+  it('retains recorded driving when no daily period boundary is known', () => {
     const sessions = [
       session(
         'driving',
@@ -127,10 +127,10 @@ describe('computeCounters — dailyDriving', () => {
       ),
     ];
     const { dailyDriving } = computeCounters(sessions, WED_NOON, null);
-    expect(dailyDriving).toBe(2 * HOUR);
+    expect(dailyDriving).toBe(7 * HOUR);
   });
 
-  it('clips a session that started before midnight to the current day', () => {
+  it('does not discard recorded driving before midnight without a known rest', () => {
     const sessions = [
       session(
         'driving',
@@ -139,7 +139,7 @@ describe('computeCounters — dailyDriving', () => {
       ),
     ];
     const { dailyDriving } = computeCounters(sessions, WED_NOON, null);
-    expect(dailyDriving).toBe(3 * HOUR);
+    expect(dailyDriving).toBe(5 * HOUR);
   });
 
   it('honours a recorded rest end that precedes midnight', () => {

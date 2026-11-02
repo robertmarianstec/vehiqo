@@ -9,7 +9,6 @@ import {
 } from '@/constants/euRegulations';
 import type { WorkMode, WorkSession } from '@/db/types';
 import { getWarningLevel, type WarningLevel } from '@/utils/compliance';
-import { getDayBounds } from '@/utils/dayTimeline';
 
 // Sums time spent in `mode` that overlaps the [from, to) range.
 // Each session is clipped to the range boundaries.
@@ -38,13 +37,19 @@ export function getDrivingSinceLastBreak(
   sessions: WorkSession[],
   now: number,
 ): number {
-  const ordered = [...sessions].sort((a, b) => a.started_at - b.started_at);
+  const ordered = sessions
+    .filter(
+      (session) =>
+        session.started_at < now &&
+        (session.ended_at ?? now) > session.started_at,
+    )
+    .sort((a, b) => a.started_at - b.started_at);
   let accumulated = 0;
   let pendingFirstBreak = false;
 
   for (let index = 0; index < ordered.length; index += 1) {
     const session = ordered[index];
-    let end = session.ended_at ?? now;
+    let end = Math.min(session.ended_at ?? now, now);
 
     if (session.mode === 'break' || session.mode === 'rest') {
       // Changing the label does not interrupt a continuous off-duty period.
@@ -54,7 +59,7 @@ export function getDrivingSinceLastBreak(
         (next.mode === 'break' || next.mode === 'rest') &&
         next.started_at === end
       ) {
-        end = next.ended_at ?? now;
+        end = Math.min(next.ended_at ?? now, now);
         index += 1;
         next = ordered[index + 1];
       }
@@ -80,20 +85,35 @@ export function getDrivingSinceLastBreak(
 type RestPeriod = Pick<WorkSession, 'started_at' | 'ended_at'>;
 
 // Gaps and other activities interrupt a rest, even when its records are nearby.
-function getContinuousRestPeriods(sessions: WorkSession[]): RestPeriod[] {
+function getContinuousRestPeriods(
+  sessions: WorkSession[],
+  now: number,
+): RestPeriod[] {
   const periods: RestPeriod[] = [];
   let current: RestPeriod | undefined;
   for (const session of [...sessions].sort(
     (a, b) => a.started_at - b.started_at,
   )) {
+    if (session.started_at >= now) break;
+    if (session.ended_at !== null && session.ended_at <= session.started_at)
+      continue;
     if (session.mode !== 'rest') {
       current = undefined;
       continue;
     }
     if (current && current.ended_at === session.started_at) {
-      current.ended_at = session.ended_at;
+      current.ended_at =
+        session.ended_at !== null && session.ended_at <= now
+          ? session.ended_at
+          : null;
     } else {
-      current = { started_at: session.started_at, ended_at: session.ended_at };
+      current = {
+        started_at: session.started_at,
+        ended_at:
+          session.ended_at !== null && session.ended_at <= now
+            ? session.ended_at
+            : null,
+      };
       periods.push(current);
     }
   }
@@ -113,7 +133,7 @@ export function getDailyDrivingPeriods(
   sessions: WorkSession[],
   now: number,
 ): DailyDrivingPeriod[] {
-  const qualifyingRests = getContinuousRestPeriods(sessions).filter(
+  const qualifyingRests = getContinuousRestPeriods(sessions, now).filter(
     (rest) => (rest.ended_at ?? now) - rest.started_at >= DAILY_REST_REDUCED_MS,
   );
 
@@ -133,10 +153,26 @@ export function getCurrentDailyDrivingStart(
   sessions: WorkSession[],
   now: number,
   lastDailyRestEnd: number | null,
-): number {
+): number | null {
   const historyStart = getDailyDrivingPeriods(sessions, now).at(-1)?.start;
+  if (lastDailyRestEnd !== null) {
+    const insideActivity = sessions.some(
+      (session) =>
+        session.started_at < lastDailyRestEnd &&
+        ((session.ended_at ?? Infinity) > lastDailyRestEnd ||
+          (session.mode !== 'rest' && session.ended_at === lastDailyRestEnd)),
+    );
+    const insideContinuousRest = getContinuousRestPeriods(sessions, now).some(
+      (rest) =>
+        (rest.started_at < lastDailyRestEnd &&
+          (rest.ended_at ?? Infinity) > lastDailyRestEnd) ||
+        (rest.ended_at === lastDailyRestEnd &&
+          rest.ended_at - rest.started_at < DAILY_REST_REDUCED_MS),
+    );
+    if (insideActivity || insideContinuousRest) return historyStart ?? null;
+  }
   if (historyStart === undefined) {
-    return lastDailyRestEnd ?? getDayBounds(now).dayStart;
+    return lastDailyRestEnd;
   }
   return Math.max(historyStart, lastDailyRestEnd ?? historyStart);
 }
@@ -171,7 +207,7 @@ export function countExtensionsUsedThisWeek(
 
 export interface DailyDrivingStatus {
   level: WarningLevel | null;
-  /** Driving has passed 9h on an extension the driver still had available. */
+  /** The extension message applies between the basic and extended thresholds. */
   extensionInUse: boolean;
   extensionsUsed: number;
   /**
@@ -199,7 +235,7 @@ export function getDailyDrivingStatus(
       ? MAX_DAILY_DRIVING_EXTENDED_MS
       : MAX_DAILY_DRIVING_REGULAR_MS;
     const withinExtension =
-      extensionAvailable && driving <= MAX_DAILY_DRIVING_EXTENDED_MS;
+      extensionAvailable && driving < MAX_DAILY_DRIVING_EXTENDED_MS;
     return {
       level: withinExtension ? 'warning' : 'danger',
       extensionInUse: withinExtension,
@@ -224,7 +260,7 @@ export function getLastRestPeriodEnd(
   minDurationMs: number,
   now: number,
 ): number | null {
-  const ordered = getContinuousRestPeriods(sessions).reverse();
+  const ordered = getContinuousRestPeriods(sessions, now).reverse();
   for (const session of ordered) {
     const end = session.ended_at ?? now;
     if (end - session.started_at >= minDurationMs) return end;

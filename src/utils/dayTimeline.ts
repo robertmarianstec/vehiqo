@@ -19,7 +19,7 @@ export function getDaySegments(
   const segments: DaySegment[] = [];
   for (const session of sessions) {
     const start = Math.max(session.started_at, dayStart);
-    const end = Math.min(session.ended_at ?? now, dayEnd);
+    const end = Math.min(session.ended_at ?? now, dayEnd, now);
     if (end > start) {
       segments.push({ mode: session.mode, start, end });
     }

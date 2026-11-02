@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { Text } from '@/components/Text';
+import { formatDuration } from '@/utils/format';
 import type { AlertSeverity, TimerAlert } from '@/utils/workTimerAlerts';
 
 interface AlertBannerProps {
@@ -49,6 +50,10 @@ export function AlertBanner({ alert }: AlertBannerProps) {
   const message = t(alert.messageKey, {
     percent: alert.percent,
     used: alert.used,
+    time:
+      alert.remainingMs === undefined
+        ? undefined
+        : formatDuration(Math.ceil(alert.remainingMs / 60_000) * 60_000),
   });
 
   return (

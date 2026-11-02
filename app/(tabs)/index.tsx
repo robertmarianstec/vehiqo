@@ -22,6 +22,7 @@ import {
 } from '@/components';
 import {
   MAX_BIWEEKLY_DRIVING_MS,
+  MAX_DAILY_DRIVING_REGULAR_MS,
   MAX_WEEKLY_DRIVING_MS,
 } from '@/constants/euRegulations';
 import type { WorkMode } from '@/db/types';
@@ -48,6 +49,7 @@ export default function TimerScreen() {
     loadError,
     todayBounds,
     todaySegments,
+    dailyDrivingComplete,
     dailyDrivingLimit,
     switchMode,
   } = useWorkTimerContext();
@@ -102,17 +104,29 @@ export default function TimerScreen() {
               variant={compactDetails ? 'timestamp' : 'eyebrow'}
               className={counterLabelClass}
             >
-              {t('workTimer.counters.daily')}
+              {t(
+                dailyDrivingComplete
+                  ? 'workTimer.counters.daily'
+                  : 'workTimer.counters.dailyRecorded',
+              )}
             </Text>
             <Text variant="heading">
               {formatDuration(counters.dailyDriving)}
             </Text>
-            <ProgressBar
-              value={counters.dailyDriving}
-              limit={dailyDrivingLimit}
-            />
+            {dailyDrivingLimit !== null && (
+              <ProgressBar
+                value={counters.dailyDriving}
+                limit={dailyDrivingLimit}
+              />
+            )}
             <Text variant="timestamp">
-              / {formatDuration(dailyDrivingLimit)}
+              {dailyDrivingLimit !== null
+                ? `/ ${formatDuration(dailyDrivingLimit)}`
+                : dailyDrivingComplete
+                  ? t('workTimer.counters.extensionsUnknown', {
+                      limit: formatDuration(MAX_DAILY_DRIVING_REGULAR_MS),
+                    })
+                  : t('workTimer.counters.dailyIncomplete')}
             </Text>
           </Card>
           <Card compact={compactDetails} className={counterCardClass}>

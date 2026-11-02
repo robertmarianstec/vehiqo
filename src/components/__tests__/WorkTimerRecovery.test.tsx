@@ -82,6 +82,31 @@ async function renderTimer() {
 }
 
 describe('work timer recovery', () => {
+  it('identifies the fixed driving counter while other work is selected', async () => {
+    const current = openSession('other_work', NOW - 61_000);
+    jest.mocked(getCurrentWorkSession).mockResolvedValue(current);
+    jest.mocked(getWorkSessionsInRange).mockResolvedValue([current]);
+    await renderTimer();
+    expect(
+      screen.getByRole('button', { name: /Inna praca/, selected: true }),
+    ).toBeOnTheScreen();
+    expect(screen.getByText('Jazda od przerwy')).toBeOnTheScreen();
+    expect(screen.getByText('Do limitu jazdy: 04:30')).toBeOnTheScreen();
+    expect(screen.getAllByText('00:00')).toHaveLength(4);
+  });
+
+  it('shows recorded incomplete driving without a daily-limit comparison', async () => {
+    await renderTimer();
+    expect(
+      screen.getByText(i18n.t('workTimer.counters.dailyRecorded')),
+    ).toBeOnTheScreen();
+    expect(
+      screen.getByText(i18n.t('workTimer.counters.dailyIncomplete')),
+    ).toBeOnTheScreen();
+    expect(screen.queryByText('/ 09:00')).toBeNull();
+    expect(screen.queryByText('/ 10:00')).toBeNull();
+  });
+
   it('offers reports in the scrollable details without changing counters or mode controls', async () => {
     await renderTimer();
     expect(
@@ -200,6 +225,7 @@ describe('work timer recovery', () => {
           closed('rest', firstRestStart, firstRestEnd),
           closed('driving', firstRestEnd, nextRestStart),
           closed('rest', nextRestStart, nextRestEnd),
+          closed('other_work', nextRestEnd, dayStart),
           closed('driving', dayStart, breakStart),
           closed('break', breakStart, breakStart + 45 * MINUTE),
           closed('other_work', breakStart + 45 * MINUTE, finalStart),
@@ -280,7 +306,8 @@ describe('work timer recovery', () => {
 
   it('adapts to the space left for details without changing counter values or mode controls', async () => {
     await renderTimer();
-    const label = () => screen.getByText(i18n.t('workTimer.counters.daily'));
+    const label = () =>
+      screen.getByText(i18n.t('workTimer.counters.dailyRecorded'));
     const resizeDetails = async (height: number) =>
       fireEvent(screen.getByTestId('timer-details'), 'layout', {
         nativeEvent: { layout: { x: 0, y: 0, width: 360, height } },
@@ -310,8 +337,12 @@ describe('work timer recovery', () => {
 
     expect(screen.getAllByText('04:00')).toHaveLength(4);
     expect(screen.getByRole('alert')).toBeOnTheScreen();
-    expect(screen.getByText('30 min do limitu')).toBeOnTheScreen();
-    expect(screen.getByText('Do limitu: 00:30')).toBeOnTheScreen();
+    expect(
+      screen.getByText(
+        i18n.t('workTimer.warnings.breakDueSoon', { time: '00:30' }),
+      ),
+    ).toBeOnTheScreen();
+    expect(screen.getByText('Do limitu jazdy: 00:30')).toBeOnTheScreen();
   });
 
   it('resets the displayed stint at 45 minutes without resetting the other totals', async () => {
@@ -324,7 +355,7 @@ describe('work timer recovery', () => {
     await act(() => jest.advanceTimersByTime(1_000));
     expect(screen.getByText('00:00')).toBeOnTheScreen();
     expect(screen.getAllByText('04:00')).toHaveLength(3);
-    expect(screen.getByText('Do limitu: 04:30')).toBeOnTheScreen();
+    expect(screen.getByText('Do limitu jazdy: 04:30')).toBeOnTheScreen();
     expect(screen.queryByRole('alert')).toBeNull();
 
     await fireEvent.press(screen.getByText('Jazda'));

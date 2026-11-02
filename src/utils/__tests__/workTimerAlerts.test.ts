@@ -19,15 +19,49 @@ const NO_PERCENTS: CounterPercents = {
 };
 
 describe('buildTimerAlerts', () => {
+  it.each([30, 10, 1])(
+    'carries the actual %s remaining minutes in the pre-alert',
+    (minutes) => {
+      expect(
+        buildTimerAlerts(NO_WARNINGS, NO_PERCENTS, minutes * 60_000, 'driving'),
+      ).toEqual([
+        {
+          id: 'breakDueSoon',
+          severity: 'warning',
+          messageKey: 'workTimer.warnings.breakDueSoon',
+          remainingMs: minutes * 60_000,
+        },
+      ]);
+    },
+  );
+
+  it.each([31 * 60_000, 0, -1])(
+    'does not emit a pre-alert for %s remaining milliseconds',
+    (remaining) => {
+      expect(
+        buildTimerAlerts(NO_WARNINGS, NO_PERCENTS, remaining, 'driving'),
+      ).toEqual([]);
+    },
+  );
+
+  it.each(['break', 'rest'] as const)(
+    'does not emit a pre-alert while already in %s mode',
+    (mode) => {
+      expect(
+        buildTimerAlerts(NO_WARNINGS, NO_PERCENTS, 10 * 60_000, mode),
+      ).toEqual([]);
+    },
+  );
+
   it('returns no alerts when nothing is triggered', () => {
-    expect(buildTimerAlerts(NO_WARNINGS, NO_PERCENTS, false, null)).toEqual([]);
+    expect(buildTimerAlerts(NO_WARNINGS, NO_PERCENTS, null, null)).toEqual([]);
   });
 
   it('builds a counter alert with matching severity, message key and live percent', () => {
     const alerts = buildTimerAlerts(
       { ...NO_WARNINGS, dailyDriving: 'info' },
       { ...NO_PERCENTS, dailyDriving: 77 },
-      false,
+      null,
       null,
     );
     expect(alerts).toEqual([
@@ -44,7 +78,7 @@ describe('buildTimerAlerts', () => {
     const alerts = buildTimerAlerts(
       { ...NO_WARNINGS, dailyDriving: 'warning', weeklyDriving: 'danger' },
       { ...NO_PERCENTS, dailyDriving: 93, weeklyDriving: 104 },
-      false,
+      null,
       null,
     );
     const byId = Object.fromEntries(alerts.map((a) => [a.id, a.percent]));
@@ -61,7 +95,7 @@ describe('buildTimerAlerts', () => {
         biweeklyDriving: null,
       },
       NO_PERCENTS,
-      false,
+      null,
       null,
     );
     expect(alerts.map((a) => a.severity)).toEqual([
@@ -77,12 +111,18 @@ describe('buildTimerAlerts', () => {
   });
 
   it('adds the break-due-soon pre-alert as a warning with no percent', () => {
-    const alerts = buildTimerAlerts(NO_WARNINGS, NO_PERCENTS, true, null);
+    const alerts = buildTimerAlerts(
+      NO_WARNINGS,
+      NO_PERCENTS,
+      30 * 60_000,
+      null,
+    );
     expect(alerts).toEqual([
       {
         id: 'breakDueSoon',
         severity: 'warning',
         messageKey: 'workTimer.warnings.breakDueSoon',
+        remainingMs: 30 * 60_000,
       },
     ]);
   });
@@ -91,7 +131,7 @@ describe('buildTimerAlerts', () => {
     const alerts = buildTimerAlerts(
       { ...NO_WARNINGS, drivingSinceBreak: 'danger' },
       { ...NO_PERCENTS, drivingSinceBreak: 101 },
-      true,
+      30 * 60_000,
       null,
     );
     expect(alerts.map((a) => a.id)).toEqual(['drivingSinceBreak']);
@@ -102,7 +142,7 @@ describe('buildTimerAlerts', () => {
     const alerts = buildTimerAlerts(
       { ...NO_WARNINGS, drivingSinceBreak: 'warning' },
       { ...NO_PERCENTS, drivingSinceBreak: 92 },
-      true,
+      30 * 60_000,
       null,
     );
     expect(alerts.map((a) => a.id)).toEqual([
@@ -116,7 +156,7 @@ describe('buildTimerAlerts', () => {
     const alerts = buildTimerAlerts(
       { ...NO_WARNINGS, drivingSinceBreak: 'danger' },
       { ...NO_PERCENTS, drivingSinceBreak: 101 },
-      false,
+      null,
       'break',
     );
     expect(alerts).toEqual([]);
@@ -126,7 +166,7 @@ describe('buildTimerAlerts', () => {
     const alerts = buildTimerAlerts(
       { ...NO_WARNINGS, drivingSinceBreak: 'warning' },
       { ...NO_PERCENTS, drivingSinceBreak: 92 },
-      false,
+      null,
       'rest',
     );
     expect(alerts).toEqual([]);
@@ -140,7 +180,7 @@ describe('buildTimerAlerts', () => {
         dailyDriving: 'warning',
       },
       { ...NO_PERCENTS, drivingSinceBreak: 101, dailyDriving: 93 },
-      false,
+      null,
       'break',
     );
     expect(alerts.map((a) => a.id)).toEqual(['dailyDriving']);
@@ -150,7 +190,7 @@ describe('buildTimerAlerts', () => {
     const alerts = buildTimerAlerts(
       { ...NO_WARNINGS, drivingSinceBreak: 'danger' },
       { ...NO_PERCENTS, drivingSinceBreak: 101 },
-      false,
+      null,
       'driving',
     );
     expect(alerts.map((a) => a.id)).toEqual(['drivingSinceBreak']);
@@ -171,11 +211,55 @@ describe('buildTimerAlerts — daily driving extension', () => {
     biweeklyDriving: 0,
   };
 
+  it.each(['info', 'warning'] as const)(
+    'suppresses a daily %s message when extension history is unknown',
+    (level) => {
+      expect(
+        buildTimerAlerts(
+          { ...noWarnings, dailyDriving: level, weeklyDriving: 'warning' },
+          percents,
+          null,
+          'driving',
+          { inUse: true, used: 1, historyKnown: false },
+        ),
+      ).toEqual([
+        {
+          id: 'weeklyDriving',
+          severity: 'warning',
+          messageKey: 'workTimer.warnings.weeklyDriving.warning',
+          percent: 0,
+        },
+      ]);
+    },
+  );
+
+  it.each([false, true])(
+    'reports the known maximum without inferring extension usage from unknown history (inUse: %s)',
+    (inUse) => {
+      expect(
+        buildTimerAlerts(
+          { ...noWarnings, dailyDriving: 'danger' },
+          percents,
+          null,
+          'driving',
+          { inUse, used: 2, historyKnown: false },
+        ),
+      ).toEqual([
+        {
+          id: 'dailyDriving',
+          severity: 'danger',
+          messageKey:
+            'workTimer.warnings.dailyDriving.maximumReachedUnknownHistory',
+        },
+      ]);
+    },
+  );
+
   it('reports an extension in use instead of the plain limit message', () => {
     const alerts = buildTimerAlerts(
       { ...noWarnings, dailyDriving: 'warning' },
       percents,
-      false,
+      null,
       'driving',
       { inUse: true, used: 1 },
     );
@@ -191,7 +275,7 @@ describe('buildTimerAlerts — daily driving extension', () => {
     const alerts = buildTimerAlerts(
       { ...noWarnings, dailyDriving: 'danger' },
       percents,
-      false,
+      null,
       'driving',
       { inUse: false, used: 2 },
     );
@@ -203,7 +287,7 @@ describe('buildTimerAlerts — daily driving extension', () => {
     const alerts = buildTimerAlerts(
       { ...noWarnings, dailyDriving: 'warning', weeklyDriving: 'danger' },
       percents,
-      false,
+      null,
       'driving',
       { inUse: true, used: 2 },
     );

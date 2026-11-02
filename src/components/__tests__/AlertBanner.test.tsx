@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native';
+import { act, render, screen } from '@testing-library/react-native';
 
 import { AlertBanner } from '@/components/AlertBanner';
 import i18n from '@/i18n';
@@ -19,6 +19,43 @@ function badgeGlyph(): string {
 }
 
 describe('AlertBanner', () => {
+  it.each([
+    {
+      language: 'en',
+      remainingMs: 10 * 60_000,
+      message: 'To the break limit: 00:10',
+    },
+    {
+      language: 'pl',
+      remainingMs: 10 * 60_000,
+      message: 'Do limitu przed przerwą: 00:10',
+    },
+    { language: 'en', remainingMs: 1, message: 'To the break limit: 00:01' },
+  ])(
+    'announces the remaining duration in $language at $remainingMs milliseconds',
+    async ({ language, remainingMs, message }) => {
+      await i18n.changeLanguage(language);
+      try {
+        await render(
+          <AlertBanner
+            alert={{
+              id: 'breakDueSoon',
+              severity: 'warning',
+              messageKey: 'workTimer.warnings.breakDueSoon',
+              remainingMs,
+            }}
+          />,
+        );
+        expect(screen.getByText(message)).toBeOnTheScreen();
+        expect(screen.getByRole('alert').props.accessibilityLabel).toBe(
+          message,
+        );
+      } finally {
+        await act(() => i18n.changeLanguage('en'));
+      }
+    },
+  );
+
   it('puts the live percentage into the message', async () => {
     const alert: TimerAlert = {
       id: 'drivingSinceBreak',
@@ -43,14 +80,15 @@ describe('AlertBanner', () => {
     ).toBeOnTheScreen();
   });
 
-  it('leaves no unresolved placeholder in a message that takes no values', async () => {
+  it('leaves no unresolved placeholder in the pre-break countdown', async () => {
     const alert: TimerAlert = {
       id: 'breakDueSoon',
       severity: 'warning',
       messageKey: 'workTimer.warnings.breakDueSoon',
+      remainingMs: 30 * 60_000,
     };
     await render(<AlertBanner alert={alert} />);
-    expect(screen.getByText('30 min to the limit')).toBeOnTheScreen();
+    expect(screen.getByText('To the break limit: 00:30')).toBeOnTheScreen();
     expect(screen.queryByText(/\{\{/)).toBeNull();
   });
 

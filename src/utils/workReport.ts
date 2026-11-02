@@ -1,5 +1,6 @@
 import type { WorkMode, WorkSession } from '@/db/types';
 import { getDayBounds, getWeekStart } from '@/utils/dayTimeline';
+import { assertValidWorkSessions } from '@/utils/workSessionValidation';
 import { sumModeTimeInRange } from '@/utils/workTime';
 
 export interface WorkReportDay {
@@ -88,6 +89,7 @@ export function getWorkReportDays(
   }
   const reportEnd = Math.min(to, now);
   if (reportEnd <= from) return [];
+  assertValidWorkSessions(sessions);
 
   const intervals = sessions
     .map((session) => ({
