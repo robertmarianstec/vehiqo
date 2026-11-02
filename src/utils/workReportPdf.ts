@@ -78,19 +78,19 @@ export function buildWorkReportHtml({
 <title>Vehiqo - ${escapeHtml(t('reports.pdf.title'))}</title>
 <style>
 @page { size: A4 portrait; margin: 12mm; }
-body { font-family: Arial, Helvetica, sans-serif; font-size: 9pt; line-height: 1.4; margin: 0; }
-h1 { font-size: 18pt; margin: 0 0 6px; }
+body { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; line-height: 1.4; margin: 0; }
+h1 { font-size: 20pt; margin: 0 0 6px; }
 p { margin: 6px 0; }
 header { margin-bottom: 16px; }
 .disclaimer { border: 1px solid; padding: 8px; }
-table { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 9pt; }
+table { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 12pt; }
 th, td { padding: 2px 4px; border-bottom: 1px solid; text-align: right; vertical-align: top; }
-th:first-child { width: 22%; text-align: left; }
+th:first-child { width: 16%; text-align: left; }
 thead { display: table-header-group; }
-thead th { vertical-align: bottom; overflow-wrap: break-word; }
+thead th { vertical-align: bottom; font-size: 11pt; overflow-wrap: break-word; }
 tfoot { display: table-row-group; font-weight: bold; }
 tr { break-inside: avoid; page-break-inside: avoid; }
-small { display: block; font-size: 7.5pt; font-weight: normal; }
+small { display: block; font-size: 10pt; font-weight: normal; }
 footer { margin-top: 12px; }
 </style></head><body>
 <header><h1>Vehiqo - ${escapeHtml(t('reports.pdf.title'))}</h1>

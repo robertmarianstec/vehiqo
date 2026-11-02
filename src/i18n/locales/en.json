@@ -98,8 +98,11 @@
       "sourceNote": "The vehicle's tachograph and the driver's documentation remain the source of truth.",
       "durationNote": "Times are shown as hours:minutes. Seconds are omitted in each displayed value.",
       "missingNote": "No data means time with no recorded mode, not rest.",
-      "unavailable": "PDF sharing is unavailable here. Open the report in the Vehiqo app on Android or iOS.",
-      "error": "The PDF could not be created or shared. Please try again."
+      "unavailable": "PDF preview is unavailable here. Open the report in the Vehiqo app on Android or iOS.",
+      "noViewer": "The PDF was created, but no app on this device can open it. You can share the file or install a PDF reader and try again.",
+      "share": "Share PDF",
+      "sharingUnavailable": "File sharing is unavailable on this device.",
+      "error": "The PDF could not be created, opened or shared. Please try again."
     }
   },
   "settings": {

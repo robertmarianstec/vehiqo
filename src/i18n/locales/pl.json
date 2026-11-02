@@ -98,8 +98,11 @@
       "sourceNote": "Źródłem prawdy pozostają tachograf pojazdu i dokumentacja kierowcy.",
       "durationNote": "Czasy podano jako godziny:minuty. Sekundy są pomijane w każdej wyświetlanej wartości.",
       "missingNote": "Brak danych oznacza czas bez zapisanego trybu, nie odpoczynek.",
-      "unavailable": "Udostępnianie PDF nie jest tutaj dostępne. Otwórz raport w aplikacji Vehiqo na Androidzie lub iOS.",
-      "error": "Nie udało się utworzyć lub udostępnić PDF. Spróbuj ponownie."
+      "unavailable": "Podgląd PDF nie jest tutaj dostępny. Otwórz raport w aplikacji Vehiqo na Androidzie lub iOS.",
+      "noViewer": "PDF został utworzony, ale na tym urządzeniu nie ma aplikacji, która go otworzy. Możesz udostępnić plik lub zainstalować czytnik PDF i spróbować ponownie.",
+      "share": "Udostępnij PDF",
+      "sharingUnavailable": "Udostępnianie plików nie jest dostępne na tym urządzeniu.",
+      "error": "Nie udało się utworzyć, otworzyć lub udostępnić PDF. Spróbuj ponownie."
     }
   },
   "settings": {

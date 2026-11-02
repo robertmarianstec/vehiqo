@@ -4,11 +4,18 @@ import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 
 export class PdfSharingUnavailableError extends Error {}
+export class PdfPreviewUnavailableError extends Error {}
 
-export async function shareWorkReportPdf(html: string): Promise<void> {
+export class PdfViewerUnavailableError extends Error {
+  constructor(readonly uri: string) {
+    super('No PDF viewer is available');
+  }
+}
+
+export async function openWorkReportPdf(html: string): Promise<void> {
   // Expo's web implementation prints the current app page instead of this HTML.
-  if (Platform.OS === 'web' || !(await Sharing.isAvailableAsync())) {
-    throw new PdfSharingUnavailableError('PDF sharing is unavailable');
+  if (Platform.OS === 'web') {
+    throw new PdfPreviewUnavailableError('PDF preview is unavailable');
   }
   const result = await Print.printToFileAsync({
     html,
@@ -19,11 +26,23 @@ export async function shareWorkReportPdf(html: string): Promise<void> {
   });
   let uri = result.uri;
   if (Platform.OS === 'android') {
-    // Expo Go cannot share Android Print files outside the project's scoped cache.
+    // Expo Go cannot expose Android Print files outside the project's scoped cache.
     if (!result.base64) throw new Error('Missing PDF data');
     const file = new File(Paths.cache, Paths.basename(result.uri));
     await file.write(result.base64, { encoding: 'base64' });
     uri = file.uri;
+  }
+  const file = new File(uri);
+  const options = { mimeType: 'application/pdf' };
+  if (!(await file.canPreview(options))) {
+    throw new PdfViewerUnavailableError(uri);
+  }
+  await file.preview(options);
+}
+
+export async function shareWorkReportPdf(uri: string): Promise<void> {
+  if (!(await Sharing.isAvailableAsync())) {
+    throw new PdfSharingUnavailableError('PDF sharing is unavailable');
   }
   await Sharing.shareAsync(uri, {
     mimeType: 'application/pdf',

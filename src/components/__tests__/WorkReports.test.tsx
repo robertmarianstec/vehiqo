@@ -27,8 +27,13 @@ jest.mock('expo-print', () => ({ printToFileAsync: jest.fn() }));
 jest.mock('expo-file-system', () => ({
   Paths: { cache: 'file:///vehiqo-cache', basename: () => 'report.pdf' },
   File: class {
-    uri = 'file:///vehiqo-cache/report.pdf';
+    uri: string;
+    constructor(parent: string, name?: string) {
+      this.uri = name ? `${parent}/${name}` : parent;
+    }
     write = mockWritePdf;
+    canPreview = mockCanPreviewPdf;
+    preview = mockPreviewPdf;
   },
 }));
 jest.mock('expo-sharing', () => ({
@@ -38,6 +43,8 @@ jest.mock('expo-sharing', () => ({
 
 const HOUR = 3_600_000;
 const mockWritePdf = jest.fn();
+const mockCanPreviewPdf = jest.fn();
+const mockPreviewPdf = jest.fn();
 const NOW = new Date(2026, 5, 17, 12).getTime();
 const MONDAY = new Date(2026, 5, 15).getTime();
 function session(
@@ -75,6 +82,8 @@ beforeEach(async () => {
   jest.mocked(Sharing.isAvailableAsync).mockReset().mockResolvedValue(true);
   jest.mocked(Sharing.shareAsync).mockReset().mockResolvedValue();
   mockWritePdf.mockReset().mockResolvedValue(undefined);
+  mockCanPreviewPdf.mockReset().mockResolvedValue(true);
+  mockPreviewPdf.mockReset().mockResolvedValue(undefined);
   await i18n.changeLanguage('pl');
 });
 afterEach(() => jest.useRealTimers());
@@ -155,21 +164,28 @@ it('supports retry after a database error', async () => {
   expect(screen.getByText('49:45')).toBeOnTheScreen();
 });
 
-it('exports the selected month with the displayed snapshot and opens native sharing', async () => {
+it('opens the selected month as a PDF with the displayed snapshot without sharing', async () => {
   await loaded();
   await fireEvent.press(screen.getByRole('button', { name: 'Miesiąc' }));
   await waitFor(() => expect(screen.getByText('09:00')).toBeOnTheScreen());
   jest.setSystemTime(NOW + HOUR);
   await fireEvent.press(screen.getByRole('button', { name: 'Przygotuj PDF' }));
   await waitFor(() =>
-    expect(Sharing.shareAsync).toHaveBeenCalledWith(
-      'file:///report.pdf',
-      expect.objectContaining({ mimeType: 'application/pdf' }),
-    ),
+    expect(mockPreviewPdf).toHaveBeenCalledWith({
+      mimeType: 'application/pdf',
+    }),
   );
+  expect(mockCanPreviewPdf).toHaveBeenCalledWith({
+    mimeType: 'application/pdf',
+  });
+  expect(Sharing.isAvailableAsync).not.toHaveBeenCalled();
+  expect(Sharing.shareAsync).not.toHaveBeenCalled();
   const options = jest.mocked(Print.printToFileAsync).mock.calls[0][0];
   expect(options).toMatchObject({ width: 595, height: 842 });
   expect(mockWritePdf).not.toHaveBeenCalled();
+  expect(mockPreviewPdf.mock.contexts[0]).toMatchObject({
+    uri: 'file:///report.pdf',
+  });
   expect(options?.html).toContain('Miesiąc');
   expect(options?.html).toContain('09:00');
   expect(options?.html).toContain('02:00');
@@ -197,7 +213,7 @@ it('blocks duplicate exports and period changes while generating, then unlocks',
   expect(screen.getByRole('button', { name: 'Przygotuj PDF' })).toBeEnabled();
 });
 
-it('waits for the Android PDF to be written in the app cache before sharing', async () => {
+it('waits for the Android PDF to be written in the app cache before opening it', async () => {
   const platform = jest.replaceProperty(Platform, 'OS', 'android');
   let finishWrite!: () => void;
   mockWritePdf.mockReturnValueOnce(
@@ -223,21 +239,25 @@ it('waits for the Android PDF to be written in the app cache before sharing', as
     expect(Print.printToFileAsync).toHaveBeenCalledWith(
       expect.objectContaining({ base64: true }),
     );
-    expect(Sharing.shareAsync).not.toHaveBeenCalled();
+    expect(mockCanPreviewPdf).not.toHaveBeenCalled();
+    expect(mockPreviewPdf).not.toHaveBeenCalled();
     expect(
       screen.getByRole('button', { name: 'Tworzenie PDF…' }),
     ).toBeDisabled();
     await act(() => finishWrite());
-    expect(Sharing.shareAsync).toHaveBeenCalledWith(
-      'file:///vehiqo-cache/report.pdf',
-      expect.objectContaining({ mimeType: 'application/pdf' }),
-    );
+    expect(mockPreviewPdf).toHaveBeenCalledWith({
+      mimeType: 'application/pdf',
+    });
+    expect(mockPreviewPdf.mock.contexts[0]).toMatchObject({
+      uri: 'file:///vehiqo-cache/report.pdf',
+    });
+    expect(Sharing.shareAsync).not.toHaveBeenCalled();
   } finally {
     platform.restore();
   }
 });
 
-it.each(['print', 'share', 'unavailable', 'write', 'missing'] as const)(
+it.each(['print', 'preview', 'check', 'write', 'missing'] as const)(
   'keeps the report and allows retry after %s failure',
   async (failure) => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
@@ -250,12 +270,10 @@ it.each(['print', 'share', 'unavailable', 'write', 'missing'] as const)(
         jest
           .mocked(Print.printToFileAsync)
           .mockRejectedValueOnce(new Error('print failed'));
-      if (failure === 'share')
-        jest
-          .mocked(Sharing.shareAsync)
-          .mockRejectedValueOnce(new Error('share failed'));
-      if (failure === 'unavailable')
-        jest.mocked(Sharing.isAvailableAsync).mockResolvedValueOnce(false);
+      if (failure === 'preview')
+        mockPreviewPdf.mockRejectedValueOnce(new Error('preview failed'));
+      if (failure === 'check')
+        mockCanPreviewPdf.mockRejectedValueOnce(new Error('check failed'));
       if (failure === 'write')
         mockWritePdf.mockRejectedValueOnce(new Error('write failed'));
       if (failure === 'missing')
@@ -272,20 +290,90 @@ it.each(['print', 'share', 'unavailable', 'write', 'missing'] as const)(
       expect(
         screen.getByRole('button', { name: 'Przygotuj PDF' }),
       ).toBeEnabled();
-      expect(Sharing.shareAsync).toHaveBeenCalledTimes(
-        failure === 'share' ? 1 : 0,
-      );
+      expect(Sharing.shareAsync).not.toHaveBeenCalled();
       await fireEvent.press(
         screen.getByRole('button', { name: 'Przygotuj PDF' }),
       );
       await waitFor(() =>
-        expect(Sharing.shareAsync).toHaveBeenLastCalledWith(
-          platform ? 'file:///vehiqo-cache/report.pdf' : 'file:///report.pdf',
-          expect.anything(),
+        expect(mockPreviewPdf).toHaveBeenCalledTimes(
+          failure === 'preview' ? 2 : 1,
         ),
       );
     } finally {
       platform?.restore();
+      alert.mockRestore();
+    }
+  },
+);
+
+it('offers sharing only after detecting no PDF viewer and shares the created file on request', async () => {
+  const platform = jest.replaceProperty(Platform, 'OS', 'android');
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  mockCanPreviewPdf.mockResolvedValueOnce(false);
+  try {
+    await loaded();
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Przygotuj PDF' }),
+    );
+    await waitFor(() => expect(alert).toHaveBeenCalled());
+    expect(alert).toHaveBeenCalledWith(
+      i18n.t('reports.pdf.title'),
+      i18n.t('reports.pdf.noViewer'),
+      expect.any(Array),
+    );
+    expect(mockPreviewPdf).not.toHaveBeenCalled();
+    expect(Sharing.shareAsync).not.toHaveBeenCalled();
+    const buttons = alert.mock.calls[0][2];
+    const share = buttons?.find(
+      (button) => button.text === i18n.t('reports.pdf.share'),
+    );
+    expect(share?.onPress).toBeDefined();
+    await act(() => share?.onPress?.());
+    expect(Print.printToFileAsync).toHaveBeenCalledTimes(1);
+    expect(Sharing.shareAsync).toHaveBeenCalledWith(
+      'file:///vehiqo-cache/report.pdf',
+      expect.objectContaining({ mimeType: 'application/pdf' }),
+    );
+  } finally {
+    platform.restore();
+    alert.mockRestore();
+  }
+});
+
+it.each(['unavailable', 'share'] as const)(
+  'allows retry after fallback sharing is %s',
+  async (failure) => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    mockCanPreviewPdf.mockResolvedValueOnce(false);
+    if (failure === 'unavailable')
+      jest.mocked(Sharing.isAvailableAsync).mockResolvedValueOnce(false);
+    else
+      jest
+        .mocked(Sharing.shareAsync)
+        .mockRejectedValueOnce(new Error('share failed'));
+    try {
+      await loaded();
+      await fireEvent.press(
+        screen.getByRole('button', { name: 'Przygotuj PDF' }),
+      );
+      await waitFor(() => expect(alert).toHaveBeenCalled());
+      await act(() => alert.mock.calls[0][2]?.[1].onPress?.());
+      expect(alert).toHaveBeenLastCalledWith(
+        i18n.t('reports.pdf.title'),
+        i18n.t(
+          failure === 'unavailable'
+            ? 'reports.pdf.sharingUnavailable'
+            : 'reports.pdf.error',
+        ),
+      );
+      expect(
+        screen.getByRole('button', { name: 'Przygotuj PDF' }),
+      ).toBeEnabled();
+      await fireEvent.press(
+        screen.getByRole('button', { name: 'Przygotuj PDF' }),
+      );
+      await waitFor(() => expect(mockPreviewPdf).toHaveBeenCalled());
+    } finally {
       alert.mockRestore();
     }
   },
