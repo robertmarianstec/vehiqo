@@ -7,6 +7,7 @@ import { generateId } from '@/utils/id';
 import { getLastRestPeriodEnd } from '@/utils/workTime';
 
 import { getDatabase, WebDatabaseUnavailableError } from './index';
+import { queueOperation } from './queue';
 import type { ThemePreference, WorkMode, WorkSession } from './types';
 
 // Only the web preview can lack a database; read queries then fall back to a
@@ -52,16 +53,6 @@ async function readCurrentWorkSession(): Promise<WorkSession | null> {
     if (isDbUnavailable(e)) return buildWebDemoDrivingSession();
     throw e;
   }
-}
-
-// Reads and writes share a connection: reads must not observe a transaction
-// that can still roll back, and writes must not enter another transaction.
-let pendingOperation: Promise<unknown> = Promise.resolve();
-
-function queueOperation<T>(operation: () => Promise<T>): Promise<T> {
-  const next = pendingOperation.then(operation);
-  pendingOperation = next.catch(() => undefined);
-  return next;
 }
 
 function isTimestamp(value: number): boolean {

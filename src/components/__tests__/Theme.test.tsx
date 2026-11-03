@@ -19,6 +19,7 @@ import { colorScheme, StyleCollection } from 'react-native-css/native';
 
 import { AlertBanner } from '@/components/AlertBanner';
 import { Card } from '@/components/Card';
+import { CheckAction } from '@/components/DailyCheckControls';
 import { ModeButton } from '@/components/ModeButton';
 import { ProgressBar } from '@/components/ProgressBar';
 import { Text } from '@/components/Text';
@@ -160,6 +161,19 @@ describe.each(['light', 'dark'] as const)('%s theme components', (scheme) => {
   beforeEach(() => {
     colorScheme.set(scheme);
     jest.spyOn(Appearance, 'getColorScheme').mockReturnValue(scheme);
+  });
+
+  it('keeps the daily check primary action readable', async () => {
+    await render(
+      <CheckAction primary onPress={() => {}}>
+        Save check
+      </CheckAction>,
+    );
+    const text = StyleSheet.flatten(screen.getByText('Save check').props.style);
+    const button = StyleSheet.flatten(screen.getByRole('button').props.style);
+    expect(contrast(text.color, button.backgroundColor)).toBeGreaterThanOrEqual(
+      4.5,
+    );
   });
 
   it.each(['info', 'warning', 'danger'] as const)(

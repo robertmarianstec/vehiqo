@@ -42,6 +42,7 @@ body {
   --color-ink-muted: var(--ink-muted);
   --color-track: var(--track);
   --color-brand: var(--brand);
+  --color-on-brand: var(--on-brand);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
@@ -90,6 +91,7 @@ body {
   --ink-muted: #49596b;
   --track: #b8c5d1;
   --brand: #00628f;
+  --on-brand: #f3f5f9;
   --success: #166736;
   --warning: #956000;
   --danger: #b42c3e;
@@ -138,6 +140,7 @@ body {
     --ink-muted: #9da6b4;
     --track: #2a2e34;
     --brand: #24abe8;
+    --on-brand: #0a0c11;
     --success: #5ac576;
     --warning: #e3c23b;
     --danger: #e64343;

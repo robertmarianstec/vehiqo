@@ -1,4 +1,12 @@
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
+
+// Legacy signature/GPS columns remain untouched to preserve existing records.
+export const MIGRATION_2_SQL = `
+  ALTER TABLE daily_checks ADD COLUMN driver_name TEXT;
+  ALTER TABLE daily_checks ADD COLUMN trailer_type TEXT;
+  ALTER TABLE daily_check_items ADD COLUMN has_issue INTEGER NOT NULL DEFAULT 0 CHECK (has_issue IN (0, 1));
+  ALTER TABLE daily_check_items ADD COLUMN is_critical INTEGER NOT NULL DEFAULT 0 CHECK (is_critical IN (0, 1));
+`;
 
 export const SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS work_sessions (
@@ -22,6 +30,8 @@ export const SCHEMA_SQL = `
     vehicle_type TEXT NOT NULL CHECK (vehicle_type IN ('tractor', 'trailer')),
     started_at INTEGER NOT NULL,
     completed_at INTEGER,
+    driver_name TEXT,
+    trailer_type TEXT,
     signature_uri TEXT,
     notes TEXT,
     gps_lat REAL,
@@ -39,6 +49,8 @@ export const SCHEMA_SQL = `
     daily_check_id TEXT NOT NULL REFERENCES daily_checks(id) ON DELETE CASCADE,
     item_key TEXT NOT NULL, -- i18n key resolved at runtime, e.g. 'dailyCheck.items.tyres'
     checked INTEGER NOT NULL DEFAULT 0 CHECK (checked IN (0, 1)),
+    has_issue INTEGER NOT NULL DEFAULT 0 CHECK (has_issue IN (0, 1)),
+    is_critical INTEGER NOT NULL DEFAULT 0 CHECK (is_critical IN (0, 1)),
     photo_uri TEXT,
     note TEXT,
     created_at INTEGER NOT NULL,

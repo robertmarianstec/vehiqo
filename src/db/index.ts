@@ -1,7 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 import { Platform } from 'react-native';
 
-import { SCHEMA_SQL, SCHEMA_VERSION } from './schema';
+import { runMigrations } from './migrations';
 
 const DB_NAME = 'vehiqo.db';
 
@@ -24,6 +24,7 @@ export class WebDatabaseUnavailableError extends Error {
 }
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
+let initializing: Promise<SQLite.SQLiteDatabase> | null = null;
 let webUnavailable = false;
 
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
@@ -31,20 +32,26 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (Platform.OS === 'web' && webUnavailable) {
     throw new WebDatabaseUnavailableError();
   }
+  if (initializing) return initializing;
 
-  try {
-    dbInstance =
-      Platform.OS === 'web'
-        ? await Promise.race([openAndMigrate(), rejectAfterWebTimeout()])
-        : await openAndMigrate();
-    return dbInstance;
-  } catch (e) {
-    if (Platform.OS === 'web') {
-      webUnavailable = true;
-      throw new WebDatabaseUnavailableError();
+  initializing = (async () => {
+    try {
+      dbInstance =
+        Platform.OS === 'web'
+          ? await Promise.race([openAndMigrate(), rejectAfterWebTimeout()])
+          : await openAndMigrate();
+      return dbInstance;
+    } catch (e) {
+      if (Platform.OS === 'web') {
+        webUnavailable = true;
+        throw new WebDatabaseUnavailableError();
+      }
+      throw e;
+    } finally {
+      initializing = null;
     }
-    throw e;
-  }
+  })();
+  return initializing;
 }
 
 function rejectAfterWebTimeout(): Promise<never> {
@@ -58,20 +65,13 @@ function rejectAfterWebTimeout(): Promise<never> {
 
 async function openAndMigrate(): Promise<SQLite.SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync(DB_NAME);
-  await db.execAsync('PRAGMA foreign_keys = ON;');
-  await db.execAsync('PRAGMA journal_mode = WAL;');
-  await runMigrations(db);
-  return db;
-}
-
-async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
-  const result = await db.getFirstAsync<{ user_version: number }>(
-    'PRAGMA user_version;',
-  );
-  const currentVersion = result?.user_version ?? 0;
-
-  if (currentVersion < SCHEMA_VERSION) {
-    await db.execAsync(SCHEMA_SQL);
-    await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION};`);
+  try {
+    await db.execAsync('PRAGMA foreign_keys = ON;');
+    await db.execAsync('PRAGMA journal_mode = WAL;');
+    await runMigrations(db);
+    return db;
+  } catch (error) {
+    await db.closeAsync();
+    throw error;
   }
 }
