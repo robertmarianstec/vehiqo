@@ -1,13 +1,21 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
   waitFor,
 } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 
 import { getDatabase } from '@/db';
+import {
+  completeDailyCheck,
+  getOrCreateDailyCheck,
+  updateDailyCheckItem,
+} from '@/db/dailyChecks';
 import { SCHEMA_SQL } from '@/db/schema';
 import i18n from '@/i18n';
+import { openDailyCheckPdf } from '@/services/dailyCheckPdf';
 import { pickDailyCheckPhoto } from '@/services/dailyCheckPhotos';
 import { createTestDatabase } from '@/test/sqlite';
 
@@ -25,6 +33,7 @@ jest.mock('@/services/dailyCheckPhotos', () => ({
   discardDailyCheckPhoto: jest.fn(),
   pickDailyCheckPhoto: jest.fn(),
 }));
+jest.mock('@/services/dailyCheckPdf', () => ({ openDailyCheckPdf: jest.fn() }));
 jest.mock('expo-router', () => {
   const React = jest.requireActual<typeof import('react')>('react');
   return {
@@ -37,9 +46,11 @@ beforeEach(async () => {
   database = createTestDatabase(SCHEMA_SQL);
   jest.mocked(getDatabase).mockResolvedValue(database.adapter);
   jest.mocked(pickDailyCheckPhoto).mockResolvedValue(null);
+  jest.mocked(openDailyCheckPdf).mockReset().mockResolvedValue(undefined);
   await i18n.changeLanguage('pl');
 });
 afterEach(() => {
+  jest.restoreAllMocks();
   database.sqlite.close();
 });
 async function loaded() {
@@ -55,6 +66,7 @@ async function settled() {
 it('shows the unseeded checklist, lists missing points, and returns without completing it', async () => {
   await loaded();
   expect(screen.getByText('0 z 7 sprawdzonych')).toBeOnTheScreen();
+  expect(screen.queryByRole('button', { name: 'Przygotuj PDF' })).toBeNull();
   await fireEvent.press(screen.getByText('Podsumowanie'));
   await waitFor(() =>
     expect(screen.getByText('Pozostało do sprawdzenia: 7')).toBeOnTheScreen(),
@@ -125,10 +137,77 @@ it('saves note/defect changes, requires confirmation, and shows the actual saved
   expect(
     screen.getByText(/Usterka krytyczna pozostaje oznaczona/),
   ).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('button', { name: 'Przygotuj PDF' }));
+  expect(openDailyCheckPdf).toHaveBeenCalledWith(
+    expect.objectContaining({
+      check: expect.objectContaining({
+        driver_name: 'Jan',
+        completed_at: expect.any(Number),
+      }),
+      items: expect.arrayContaining([
+        expect.objectContaining({ note: 'Uszkodzenie opony', is_critical: 1 }),
+      ]),
+    }),
+    expect.objectContaining({ locale: 'pl' }),
+  );
   await fireEvent.press(screen.getByText('Przejdź do naczepy'));
   await waitFor(() =>
     expect(screen.getByText('0 z 6 sprawdzonych')).toBeOnTheScreen(),
   );
+});
+
+async function seedConfirmed() {
+  const record = await getOrCreateDailyCheck('tractor');
+  for (const item of record.items)
+    await updateDailyCheckItem(record.check.id, item.id, { checked: 1 });
+  return completeDailyCheck(record.check.id, 'Anna', true);
+}
+
+it('locks receipt actions while generating the PDF and restores them afterwards', async () => {
+  await seedConfirmed();
+  let finish!: () => void;
+  jest.mocked(openDailyCheckPdf).mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  await loaded();
+  await fireEvent.press(screen.getByRole('button', { name: 'Przygotuj PDF' }));
+  expect(screen.getByRole('button', { name: 'Tworzenie PDF…' })).toBeDisabled();
+  expect(
+    screen.getByRole('button', { name: 'Rozpocznij nowy przegląd' }),
+  ).toBeDisabled();
+  expect(
+    screen.getByRole('button', { name: 'Przejdź do naczepy' }),
+  ).toBeDisabled();
+  await act(() => {
+    finish();
+  });
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Przygotuj PDF' }),
+    ).not.toBeDisabled(),
+  );
+  expect(
+    screen.getByRole('button', { name: 'Przejdź do naczepy' }),
+  ).not.toBeDisabled();
+});
+
+it('keeps the confirmed inspection intact after a failed export and allows retrying', async () => {
+  const record = await seedConfirmed();
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  jest
+    .mocked(openDailyCheckPdf)
+    .mockRejectedValueOnce(new Error('print failed'));
+  await loaded();
+  await fireEvent.press(screen.getByRole('button', { name: 'Przygotuj PDF' }));
+  expect(alert).toHaveBeenCalledWith(
+    'Przegląd pojazdu',
+    expect.stringContaining('Nie udało się'),
+  );
+  expect((await getOrCreateDailyCheck('tractor')).check).toEqual(record.check);
+  await fireEvent.press(screen.getByRole('button', { name: 'Przygotuj PDF' }));
+  expect(openDailyCheckPdf).toHaveBeenCalledTimes(2);
 });
 
 it('changes trailer labels without losing the tractor draft and keeps photos optional', async () => {

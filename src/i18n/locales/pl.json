@@ -78,6 +78,30 @@
     "extensionsFromRests": "Liczba wykorzystanych wydłużeń wynika z zapisanych odpoczynków i ciągłości historii tygodnia. Przy niepełnej historii aplikacja nie określa dostępności wydłużenia ani nie pokazuje paska limitu dziennego. Gdy sam okres dzienny jest kompletny, pokazuje osiągnięcie 10:00 zapisanej jazdy, bez oceny zgodności z przepisami."
   },
   "dailyCheck": {
+    "pdf": {
+      "title": "Przegląd pojazdu",
+      "create": "Przygotuj PDF",
+      "creating": "Tworzenie PDF…",
+      "startedAt": "Rozpoczęto",
+      "confirmedAt": "Potwierdzono",
+      "item": "Punkt kontroli",
+      "inspection": "Sprawdzenie",
+      "driverMarks": "Oznaczenia kierowcy",
+      "detailsBelow": "Uwagi lub zdjęcia poniżej",
+      "photos": "Zdjęcia",
+      "generatedAt": "Wygenerowano: {{date}}",
+      "timeZone": "Strefa czasowa: {{zone}}",
+      "recordId": "Identyfikator zapisu: {{id}}",
+      "disclaimer": "Zapis własny kierowcy - nie stanowi dowodu w kontroli. Aplikacja nie ocenia sprawności pojazdu. Oznaczenia usterek pochodzą od kierowcy.",
+      "photoOmitted": {
+        "missing": "Nie dołączono zdjęcia: zapisany plik jest niedostępny.",
+        "size": "Nie dołączono zdjęcia: przekroczony rozmiar zdjęcia (10 MB) lub łączny rozmiar zdjęć (20 MB) dla PDF.",
+        "format": "Nie dołączono zdjęcia: format pliku nie jest obsługiwany w PDF (np. HEIC/HEIF). Oryginał pozostaje w aplikacji."
+      },
+      "unavailable": "PDF przeglądu jest dostępny w aplikacji Vehiqo na Androidzie lub iOS.",
+      "noViewer": "PDF przeglądu został utworzony, ale na urządzeniu nie ma aplikacji, która go otworzy. Możesz udostępnić plik lub zainstalować czytnik PDF.",
+      "error": "Nie udało się przygotować lub otworzyć PDF przeglądu. Spróbuj ponownie."
+    },
     "title": "Przegląd dzienny",
     "vehicles": { "tractor": "Ciągnik", "trailer": "Naczepa" },
     "trailerType": "Typ naczepy",

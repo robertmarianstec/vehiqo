@@ -1,4 +1,3 @@
-import type { TFunction } from 'i18next';
 import { type ComponentRef, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -19,28 +18,17 @@ import {
 } from '@/components/DailyCheckControls';
 import { DailyCheckItemRow } from '@/components/DailyCheckItemRow';
 import { DRIVER_NAME_MAX_LENGTH, TRAILER_TYPES } from '@/constants/dailyCheck';
-import type { DailyCheck, DailyCheckItem, VehicleType } from '@/db/types';
+import type { DailyCheckItem, VehicleType } from '@/db/types';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useDailyCheck } from '@/hooks/useDailyCheck';
-
-function itemTitle(t: TFunction, check: DailyCheck, item: DailyCheckItem) {
-  if (check.vehicle_type === 'trailer') {
-    if (item.item_key === 'body' && check.trailer_type)
-      return t(`dailyCheck.trailerItems.body.${check.trailer_type}`);
-    if (
-      item.item_key === 'lights' ||
-      item.item_key === 'brakes' ||
-      item.item_key === 'coupling'
-    )
-      return t(`dailyCheck.trailerItems.${item.item_key}`);
-  }
-  return t(`dailyCheck.items.${item.item_key}`);
-}
+import { useDailyCheckPdf } from '@/hooks/useDailyCheckPdf';
+import { getDailyCheckItemTitle } from '@/utils/dailyCheck';
 
 export default function DailyCheckScreen() {
   const { t, i18n } = useTranslation();
   const theme = useAppTheme();
   const model = useDailyCheck();
+  const { isExporting, exportCheck } = useDailyCheckPdf();
   const { record, vehicle, isLoading, loadError, isBusy, saveError, isSaving } =
     model;
   const [page, setPage] = useState<'list' | 'summary'>('list');
@@ -86,7 +74,7 @@ export default function DailyCheckScreen() {
     updateConfirmation({ validation });
   }
   const completed = record?.check.completed_at !== null && !!record;
-  const disabled = isBusy || saveError || isLoading;
+  const disabled = isBusy || saveError || isLoading || isExporting;
   const checked = record?.items.filter((item) => item.checked).length ?? 0;
   const missing = record?.items.filter((item) => !item.checked) ?? [];
   const issues = record?.items.filter((item) => item.has_issue) ?? [];
@@ -95,7 +83,8 @@ export default function DailyCheckScreen() {
     record?.items.filter(
       (item) => item.note?.trim() || item.has_issue || item.photo_uri,
     ) ?? [];
-  const title = (item: DailyCheckItem) => itemTitle(t, record!.check, item);
+  const title = (item: DailyCheckItem) =>
+    getDailyCheckItemTitle(t, record!.check, item);
   const date = (value: number, time = false) =>
     new Intl.DateTimeFormat(i18n.resolvedLanguage, {
       day: 'numeric',
@@ -475,6 +464,18 @@ export default function DailyCheckScreen() {
                       <Text variant="caption">
                         {t('dailyCheck.disclaimer')}
                       </Text>
+                      <CheckAction
+                        disabled={disabled}
+                        onPress={() => {
+                          void exportCheck(record);
+                        }}
+                      >
+                        {t(
+                          isExporting
+                            ? 'dailyCheck.pdf.creating'
+                            : 'dailyCheck.pdf.create',
+                        )}
+                      </CheckAction>
                       <CheckAction
                         disabled={disabled}
                         onPress={() => {
