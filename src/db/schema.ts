@@ -1,4 +1,24 @@
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 4;
+
+// Legacy fatigue_sessions remain intact; manual sleep declarations are separate.
+export const MIGRATION_3_SQL = `
+  CREATE TABLE sleep_entries (
+    id TEXT PRIMARY KEY NOT NULL,
+    slept_at INTEGER NOT NULL CHECK (slept_at >= 0),
+    woke_at INTEGER CHECK (woke_at > slept_at),
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+  CREATE INDEX idx_sleep_entries_slept_at ON sleep_entries(slept_at);
+  CREATE UNIQUE INDEX idx_sleep_entries_open ON sleep_entries((1)) WHERE woke_at IS NULL;
+  CREATE TABLE fatigue_state (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    woke_at INTEGER CHECK (woke_at >= 0),
+    revision INTEGER NOT NULL CHECK (revision > 0),
+    generation TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+`;
 
 // Legacy signature/GPS columns remain untouched to preserve existing records.
 export const MIGRATION_2_SQL = `
@@ -78,4 +98,5 @@ export const SCHEMA_SQL = `
     value TEXT NOT NULL,
     updated_at INTEGER NOT NULL
   );
+  ${MIGRATION_3_SQL}
 `;

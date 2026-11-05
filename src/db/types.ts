@@ -85,4 +85,24 @@ export interface AppSetting {
   updated_at: number;
 }
 
+export interface SleepEntry {
+  id: string;
+  slept_at: number;
+  woke_at: number | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface FatigueSnapshot {
+  entries: SleepEntry[];
+  wokeAt: number | null;
+  revision: number;
+  generation: string | null;
+  updatedAt: number;
+}
+
+export type FatigueAction =
+  | { type: 'wake' | 'sleep' | 'correctWake'; at: number }
+  | { type: 'addSleep'; from: number; to: number };
+
 export type ThemePreference = 'system' | 'light' | 'dark';

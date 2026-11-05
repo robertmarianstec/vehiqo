@@ -232,6 +232,8 @@ async function clearLocalData(): Promise<void> {
     await db.runAsync('DELETE FROM daily_check_items;');
     await db.runAsync('DELETE FROM daily_checks;');
     await db.runAsync('DELETE FROM fatigue_sessions;');
+    await db.runAsync('DELETE FROM sleep_entries;');
+    await db.runAsync('DELETE FROM fatigue_state;');
     await db.runAsync('DELETE FROM work_sessions;');
     await db.runAsync('DELETE FROM app_settings;');
   });

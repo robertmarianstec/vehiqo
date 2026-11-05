@@ -2,6 +2,7 @@ import * as SQLite from 'expo-sqlite';
 import { Platform } from 'react-native';
 
 import { runMigrations } from './migrations';
+import { SCHEMA_VERSION } from './schema';
 
 const DB_NAME = 'vehiqo.db';
 
@@ -25,21 +26,28 @@ export class WebDatabaseUnavailableError extends Error {
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
 let initializing: Promise<SQLite.SQLiteDatabase> | null = null;
+let migratedVersion: number | null = null;
 let webUnavailable = false;
 
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
-  if (dbInstance) return dbInstance;
+  if (initializing) return initializing;
+  if (dbInstance && migratedVersion === SCHEMA_VERSION) return dbInstance;
   if (Platform.OS === 'web' && webUnavailable) {
     throw new WebDatabaseUnavailableError();
   }
-  if (initializing) return initializing;
-
+  const existing = dbInstance;
   initializing = (async () => {
     try {
+      if (existing) {
+        await runMigrations(existing);
+        migratedVersion = SCHEMA_VERSION;
+        return existing;
+      }
       dbInstance =
         Platform.OS === 'web'
           ? await Promise.race([openAndMigrate(), rejectAfterWebTimeout()])
           : await openAndMigrate();
+      migratedVersion = SCHEMA_VERSION;
       return dbInstance;
     } catch (e) {
       if (Platform.OS === 'web') {
